@@ -1,123 +1,124 @@
-import streamlit as st
-import os
+from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from typing import List, Optional, Dict, Any
 import shutil
-# from src.utils.pdf_loader import load_pdf_content
+import os
+import uvicorn
 
-# Page Configuration
-st.set_page_config(
-    page_title="Study Partner Agent",
-    page_icon="🎓",
-    layout="wide"
+# --- INTERNAL IMPORTS ---
+# Ensure your 'src' folder has an __init__.py file so these work
+from src.graph import build_graph
+from src.utils.pdf_loader import load_pdf_content
+
+# --- APP SETUP ---
+app = FastAPI(title="Study Partner Agent API")
+
+# Configure CORS to allow your React app to connect
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],  # In production, replace with ["http://localhost:5173"]
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
-# --- HEADER ---
-st.title("🎓 Study Partner Agent")
-st.markdown("""
-I am your AI study assistant. I can **Summarize** documents, **Validate** facts against academic papers, 
-and **Query** the web for real-time answers.
-""")
+# Initialize the Agent Graph ONCE when the server starts
+# This compiles the graph and prepares it for requests
+try:
+    agent_app = build_graph()
+    print("✅ LangGraph Agent initialized successfully.")
+except Exception as e:
+    print(f"❌ Failed to initialize LangGraph: {e}")
+    agent_app = None
 
-# --- SIDEBAR & CONFIG ---
-with st.sidebar:
-    st.header("⚙️ Settings")
-    
-    # 1. Mode Selection
-    mode = st.selectbox(
-        "Select Capability",
-        ["Query (Web Search)", "Summarize (Document)", "Validate (Fact Check)"],
-        index=0
-    )
-    
-    # 2. File Uploader
-    st.subheader("📂 Document Context")
-    uploaded_file = st.file_uploader("Upload PDF or PPT", type=["pdf", "pptx"])
-    
-    # 3. API Keys (Optional: You can rely on .env instead)
-    if not os.environ.get("OPENAI_API_KEY"):
-        os.environ["OPENAI_API_KEY"] = st.text_input("OpenAI API Key", type="password")
+# --- DATA MODELS ---
+class ChatRequest(BaseModel):
+    message: str
+    file_content: Optional[str] = None
+    # We default to "auto" so the Router Node can decide
+    mode: Optional[str] = "auto" 
+    # History comes in as a list of {role: str, content: str}
+    history: List[Dict[str, str]] = []
 
-    st.divider()
-    if st.button("Clear Chat History", type="primary"):
-        st.session_state.messages = []
-        st.session_state.file_text = ""
-        st.rerun()
+# --- ENDPOINTS ---
 
-# --- STATE MANAGEMENT ---
-if "messages" not in st.session_state:
-    st.session_state.messages = []
+@app.get("/")
+def read_root():
+    return {"status": "Study Partner Agent is running"}
 
-if "file_text" not in st.session_state:
-    st.session_state.file_text = ""
-
-# --- FILE PROCESSING LOGIC ---
-if uploaded_file:
-    # 1. Ensure 'data' directory exists
-    data_dir = os.path.join(os.getcwd(), "data")
-    os.makedirs(data_dir, exist_ok=True)
-    
-    # 2. Save the file to disk
-    file_path = os.path.join(data_dir, uploaded_file.name)
-    with open(file_path, "wb") as f:
-        f.write(uploaded_file.getbuffer())
-    
-    # 3. Load content (Only if we haven't already processed this exact file)
-    # Simple check: if file text is empty or filename changed (logic simplified for demo)
-    if not st.session_state.file_text:
-        with st.spinner(f"Processing {uploaded_file.name}..."):
-            extracted_text = load_pdf_content(file_path)
-            st.session_state.file_text = extracted_text
-            st.sidebar.success("✅ File Processed")
-
-# --- CHAT UI ---
-# Display history
-for msg in st.session_state.messages:
-    with st.chat_message(msg["role"]):
-        st.markdown(msg["content"])
-
-# Handle Input
-if prompt := st.chat_input("Ask a question or request a summary..."):
-    
-    # 1. Append User Message
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user"):
-        st.markdown(prompt)
-
-    # 2. Generate Response
-    with st.chat_message("assistant"):
-        message_placeholder = st.empty()
+@app.post("/upload")
+async def upload_file(file: UploadFile = File(...)):
+    """
+    Handles PDF uploads.
+    1. Saves the file to a temporary 'data/' folder.
+    2. Uses 'pdf_loader.py' to convert it to text.
+    3. Returns the text to the Frontend.
+    """
+    try:
+        # Create data directory if it doesn't exist
+        os.makedirs("data", exist_ok=True)
         
-        # --- CONNECTING TO YOUR LANGGRAPH ---
-        try:
-            # We import here to avoid loading the heavy graph at startup
-            from src.graph import build_graph
+        file_path = f"data/{file.filename}"
+        
+        # Save the file
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
             
-            # Initialize Graph
-            app = build_graph()
-            
-            # Prepare Inputs
-            inputs = {
-                "messages": st.session_state.messages,
-                "file_content": st.session_state.file_text,
-                "mode": mode
-            }
-            
-            # Stream the output
-            full_response = ""
-            # The app.stream method returns events. We look for the final message.
-            with st.spinner(f"Running {mode.split()[0]} Agent..."):
-                for event in app.stream(inputs):
-                    # Inspect the event to find the AI's response message
-                    # This logic depends on your specific Node output structure.
-                    # Generally, we look for the last message added to state.
-                    for node_name, values in event.items():
-                        if "messages" in values:
-                            last_msg = values["messages"][-1]
-                            # Simple streaming simulation for the UI
-                            full_response = last_msg.content
-            
-            message_placeholder.markdown(full_response)
-            st.session_state.messages.append({"role": "assistant", "content": full_response})
+        print(f"📂 File saved: {file_path}")
+        
+        # Extract text
+        markdown_text = load_pdf_content(file_path)
+        
+        return {
+            "filename": file.filename, 
+            "content": markdown_text,
+            "status": "success"
+        }
+        
+    except Exception as e:
+        print(f"Error processing file: {e}")
+        raise HTTPException(status_code=500, detail=f"File upload failed: {str(e)}")
 
-        except Exception as e:
-            st.error(f"Error running the agent: {e}")
-            st.info("Tip: Make sure you have filled in `src/graph.py` and your `.env` file.")
+@app.post("/chat")
+async def chat_endpoint(request: ChatRequest):
+    """
+    The main Agent Loop.
+    1. Constructs the state from the React request.
+    2. Invokes the LangGraph agent.
+    3. Returns the final response.
+    """
+    if not agent_app:
+        raise HTTPException(status_code=500, detail="Agent not initialized")
+
+    try:
+        # 1. Prepare the Input State
+        # We append the latest user message to the history
+        current_messages = request.history + [{"role": "user", "content": request.message}]
+        
+        inputs = {
+            "messages": current_messages,
+            "file_content": request.file_content,
+            "mode": request.mode or "auto"
+        }
+        
+        print(f"🤖 Agent invoked with mode: {inputs['mode']}")
+        
+        # 2. Run the Agent
+        # .invoke() runs the graph until it hits the END node
+        result = agent_app.invoke(inputs)
+        
+        # 3. Extract Response
+        # The result state contains the full list of messages. We want the last one.
+        last_message = result["messages"][-1]
+        response_text = last_message.content
+        
+        return {"response": response_text}
+        
+    except Exception as e:
+        print(f"❌ Error during chat processing: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# --- ENTRY POINT ---
+if __name__ == "__main__":
+    uvicorn.run("server:app", host="0.0.0.0", port=8000, reload=True)

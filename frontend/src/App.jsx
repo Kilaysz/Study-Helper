@@ -1,23 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
-import ReactMarkdown from 'react-markdown';
-import { 
-  Send, 
-  UploadCloud, 
-  FileText, 
-  Bot, 
-  User, 
-  Sparkles, 
-  Settings, 
-  Trash2, 
-  CheckCircle2, 
-  AlertCircle,
-  GraduationCap // Importing a new icon for the Quiz mode description
-} from 'lucide-react';
+import Sidebar from './components/Sidebar';
+import ChatArea from './components/ChatArea';
 
 // --- CONFIGURATION ---
 let API_URL = "http://localhost:8000";
 
 try {
+  // Safe check for environment variables
   if (import.meta && import.meta.env && import.meta.env.VITE_API_URL) {
     API_URL = import.meta.env.VITE_API_URL;
   }
@@ -26,16 +15,12 @@ try {
 }
 
 export default function App() {
-  const [messages, setMessages] = useState([
-    { 
-      role: 'assistant', 
-      content: "Hello! I'm your **AI Study Partner**.\n\nI can help you:\n1. **Query** the web for real-time info.\n2. **Summarize** complex PDFs.\n3. **Validate** claims against academic papers.\n4. **Quiz** you to test your knowledge.\n\nUpload a file or ask me a question to get started!" 
-    }
-  ]);
-  const [input, setInput] = useState('');
+  // --- STATE ---
+  const [sessions, setSessions] = useState([]);
+  const [currentId, setCurrentId] = useState(null);
   
-  // Initialize mode state
-  const [mode, setMode] = useState('Query (Web Search)');
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState('');
   
   const [fileStatus, setFileStatus] = useState(null); 
   const [fileName, setFileName] = useState('');
@@ -44,9 +29,131 @@ export default function App() {
   
   const messagesEndRef = useRef(null);
 
+  // --- INIT & PERSISTENCE ---
+
+  // 1. Load Sessions on Mount
+  useEffect(() => {
+    const storedSessions = JSON.parse(localStorage.getItem('chat_sessions') || '[]');
+    setSessions(storedSessions);
+    
+    if (storedSessions.length > 0) {
+      // Load the most recent session
+      loadSession(storedSessions[0].id);
+    } else {
+      // Start a fresh session
+      createNewSession();
+    }
+  }, []);
+
+  // 2. Save Current Session whenever content changes
+  useEffect(() => {
+    if (!currentId) return;
+
+    // Don't save if it's just the default greeting and no file
+    const isDefault = messages.length === 1 && messages[0].role === 'assistant';
+    if (isDefault && !fileContent) return;
+
+    const allHistory = JSON.parse(localStorage.getItem('chat_history') || '{}');
+    
+    // Update the history storage
+    allHistory[currentId] = {
+      messages,
+      fileName,
+      fileContent,
+      fileStatus
+    };
+    localStorage.setItem('chat_history', JSON.stringify(allHistory));
+
+    // Update the session list (Title & Timestamp)
+    setSessions(prev => {
+      const existingIndex = prev.findIndex(s => s.id === currentId);
+      
+      // Generate a title from the first user message, or file name, or default
+      const firstUserMsg = messages.find(m => m.role === 'user');
+      let title = "New Chat";
+      if (firstUserMsg) {
+        title = firstUserMsg.content.slice(0, 30) + (firstUserMsg.content.length > 30 ? "..." : "");
+      } else if (fileName) {
+        title = `File: ${fileName}`;
+      }
+
+      const newSessionInfo = { id: currentId, title, date: new Date().toISOString() };
+      
+      let newSessions;
+      if (existingIndex >= 0) {
+        newSessions = [...prev];
+        // Only update title/date, keep id
+        newSessions[existingIndex] = { ...newSessions[existingIndex], title, date: new Date().toISOString() };
+        
+        // Move to top if it's the current one being edited
+        if (existingIndex !== 0) {
+            newSessions.splice(existingIndex, 1);
+            newSessions.unshift(newSessionInfo);
+        }
+      } else {
+        newSessions = [newSessionInfo, ...prev]; // Add to top
+      }
+      
+      localStorage.setItem('chat_sessions', JSON.stringify(newSessions));
+      return newSessions;
+    });
+
+  }, [messages, fileContent, fileName, currentId]);
+
+  // --- SESSION MANAGERS ---
+
+  const createNewSession = () => {
+    const newId = Date.now().toString();
+    setCurrentId(newId);
+    setMessages([{ 
+      role: 'assistant', 
+      content: "Hello! I'm your **AI Study Partner**. \n\nUpload a file or ask me anything—I'll automatically figure out if you need a summary, a fact-check, a quiz, or just a web search!" 
+    }]);
+    setFileStatus(null);
+    setFileName('');
+    setFileContent(null);
+  };
+
+  const loadSession = (id) => {
+    const allHistory = JSON.parse(localStorage.getItem('chat_history') || '{}');
+    const data = allHistory[id];
+    
+    if (data) {
+      setCurrentId(id);
+      setMessages(data.messages || []);
+      setFileName(data.fileName || '');
+      setFileContent(data.fileContent || null);
+      setFileStatus(data.fileStatus || null);
+    } else {
+      createNewSession();
+    }
+  };
+
+  const deleteSession = (e, id) => {
+    e.stopPropagation(); // Prevent triggering selection
+    
+    const newSessions = sessions.filter(s => s.id !== id);
+    setSessions(newSessions);
+    localStorage.setItem('chat_sessions', JSON.stringify(newSessions));
+    
+    // Cleanup actual data
+    const allHistory = JSON.parse(localStorage.getItem('chat_history') || '{}');
+    delete allHistory[id];
+    localStorage.setItem('chat_history', JSON.stringify(allHistory));
+
+    // If we deleted the current session, switch to another or create new
+    if (id === currentId) {
+      if (newSessions.length > 0) loadSession(newSessions[0].id);
+      else createNewSession();
+    }
+  };
+
+  // --- SCROLLING ---
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // --- HANDLERS ---
 
   const handleFileUpload = async (e) => {
     const file = e.target.files[0];
@@ -77,13 +184,9 @@ export default function App() {
   };
 
   const handleSend = async () => {
-    // Allow sending even if input is empty IF we are in Quiz mode with a file loaded
-    // (Because "Generate Quiz" might be a valid command without extra text)
     if (!input.trim() && !fileContent) return; 
     
-    // If input is empty but we have file context (e.g. user just wants a quiz on the file),
-    // we provide a default prompt.
-    const userText = input.trim() || (mode.includes('Quiz') ? "Generate a quiz based on the document." : input);
+    const userText = input.trim() || "Analyze this document.";
 
     setInput('');
     setLoading(true);
@@ -96,7 +199,6 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: userText,
-          mode: mode,
           file_content: fileContent,
           history: messages.map(m => ({ role: m.role, content: m.content }))
         }),
@@ -110,182 +212,37 @@ export default function App() {
     } catch (error) {
       setMessages(prev => [...prev, { 
         role: 'assistant', 
-        content: `⚠️ **Connection Error:** I couldn't reach the backend at \`${API_URL}\`. Please check if \`server.py\` is running.` 
+        content: `⚠️ **Error:** Backend connection failed at \`${API_URL}\`. Is the server running?` 
       }]);
     } finally {
       setLoading(false);
     }
   };
 
-  const clearChat = () => {
-    setMessages([{ role: 'assistant', content: "Chat cleared. Ready for a new topic!" }]);
-    setFileStatus(null);
-    setFileName('');
-    setFileContent(null);
-  };
-
   return (
     <div className="flex h-screen bg-gray-50 text-gray-800 font-sans overflow-hidden">
+      <Sidebar 
+        fileStatus={fileStatus} 
+        fileName={fileName} 
+        handleFileUpload={handleFileUpload}
+        
+        // Passing new Session props to Sidebar
+        sessions={sessions}
+        currentId={currentId}
+        onNewChat={createNewSession}
+        onSelectSession={loadSession}
+        onDeleteSession={deleteSession}
+      />
       
-      <aside className="w-80 bg-white border-r border-gray-200 flex flex-col shadow-sm z-10 shrink-0">
-        <div className="p-6 border-b border-gray-100">
-          <div className="flex items-center gap-3 text-blue-600 mb-1">
-            <div className="p-2 bg-blue-50 rounded-lg">
-              <Bot size={24} />
-            </div>
-            <h1 className="text-xl font-bold tracking-tight">StudyPartner</h1>
-          </div>
-          <p className="text-xs text-gray-400 font-medium ml-1">POWERED BY LANGGRAPH</p>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-6 space-y-8">
-          
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 text-sm font-semibold text-gray-500 tracking-wide">
-              <Settings size={16} />
-              <span>AGENT MODE</span>
-            </div>
-            <div className="relative">
-              {/* UPDATED: Added Quiz Mode to options */}
-              <select 
-                value={mode} 
-                onChange={(e) => setMode(e.target.value)}
-                className="w-full appearance-none bg-gray-50 border border-gray-200 text-gray-700 py-3 px-4 pr-8 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer font-medium transition-all hover:bg-gray-100"
-              >
-                <option>Query (Web Search)</option>
-                <option>Summarize (Document)</option>
-                <option>Validate (Fact Check)</option>
-                <option>Quiz (Self Assessment)</option>
-              </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
-                <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
-              </div>
-            </div>
-            <p className="text-xs text-gray-400 px-1 leading-relaxed">
-              {mode.includes('Query') && "Searches the web for up-to-date answers."}
-              {mode.includes('Summarize') && "Reads your PDF and extracts key insights."}
-              {mode.includes('Validate') && "Checks specific claims against academic papers."}
-              {mode.includes('Quiz') && "Generates questions to test your knowledge."}
-            </p>
-          </div>
-
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 text-sm font-semibold text-gray-500 tracking-wide">
-              <FileText size={16} />
-              <span>CONTEXT FILE</span>
-            </div>
-            
-            <label className={`
-              flex flex-col items-center justify-center w-full h-32 
-              border-2 border-dashed rounded-xl cursor-pointer transition-all duration-200
-              ${fileStatus === 'uploading' ? 'bg-gray-50 border-gray-300' : ''}
-              ${fileStatus === 'success' ? 'bg-green-50 border-green-300' : 'hover:bg-gray-50 border-gray-300 hover:border-blue-500'}
-            `}>
-              <div className="flex flex-col items-center justify-center pt-5 pb-6 text-center px-4">
-                {fileStatus === 'uploading' ? (
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-2"></div>
-                ) : fileStatus === 'success' ? (
-                  <CheckCircle2 className="w-8 h-8 text-green-500 mb-2" />
-                ) : fileStatus === 'error' ? (
-                  <AlertCircle className="w-8 h-8 text-red-400 mb-2" />
-                ) : (
-                  <UploadCloud className="w-8 h-8 text-gray-400 mb-2" />
-                )}
-                
-                <p className={`text-sm font-medium truncate w-full px-2 ${fileStatus === 'success' ? 'text-green-700' : 'text-gray-500'}`}>
-                  {fileName || "Click to upload PDF"}
-                </p>
-                {!fileName && <p className="text-xs text-gray-400 mt-1">PDF or PPTX (Max 10MB)</p>}
-              </div>
-              <input type="file" className="hidden" accept=".pdf,.pptx" onChange={handleFileUpload} />
-            </label>
-          </div>
-        </div>
-
-        <div className="p-6 border-t border-gray-100 mt-auto">
-          <button 
-            onClick={clearChat}
-            className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-lg text-gray-500 hover:text-red-500 hover:bg-red-50 transition-colors text-sm font-medium"
-          >
-            <Trash2 size={16} />
-            Clear Conversation
-          </button>
-        </div>
-      </aside>
-
-      <main className="flex-1 flex flex-col h-full bg-white relative">
-        <div className="flex-1 overflow-y-auto p-8 space-y-6 scrollbar-default">
-          {messages.map((msg, idx) => (
-            <div key={idx} className={`flex gap-4 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              
-              {msg.role === 'assistant' && (
-                <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-600 to-blue-500 flex items-center justify-center shadow-md flex-shrink-0 mt-1">
-                  <Sparkles size={20} className="text-white" />
-                </div>
-              )}
-
-              <div className={`
-                max-w-[80%] lg:max-w-[70%] px-5 py-4 rounded-2xl shadow-sm text-sm leading-relaxed
-                ${msg.role === 'user' 
-                  ? 'bg-blue-600 text-white rounded-tr-sm' 
-                  : 'bg-gray-50 border border-gray-100 text-gray-800 rounded-tl-sm'}
-              `}>
-                {msg.role === 'assistant' ? (
-                  <div className="prose prose-sm max-w-none text-gray-800 prose-p:leading-relaxed prose-pre:bg-gray-200 prose-pre:text-gray-700">
-                    <ReactMarkdown>{msg.content}</ReactMarkdown>
-                  </div>
-                ) : (
-                  msg.content
-                )}
-              </div>
-
-              {msg.role === 'user' && (
-                <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0 mt-1">
-                  <User size={20} className="text-gray-500" />
-                </div>
-              )}
-            </div>
-          ))}
-
-          {loading && (
-            <div className="flex gap-4 justify-start animate-pulse">
-              <div className="w-10 h-10 rounded-full bg-gray-100"></div>
-              <div className="h-10 bg-gray-100 rounded-2xl w-32 flex items-center px-4">
-                <div className="flex gap-1">
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0ms'}}></div>
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '150ms'}}></div>
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '300ms'}}></div>
-                </div>
-              </div>
-            </div>
-          )}
-          <div ref={messagesEndRef} />
-        </div>
-
-        <div className="p-6 bg-white border-t border-gray-100">
-          <div className="max-w-4xl mx-auto relative group">
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-              placeholder={loading ? "Waiting for response..." : `Type your message here...`}
-              disabled={loading}
-              className="w-full pl-5 pr-14 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all shadow-sm placeholder-gray-400 text-gray-700"
-            />
-            <button 
-              onClick={handleSend}
-              disabled={loading || (!input.trim() && !fileContent && !mode.includes('Quiz'))}
-              className="absolute right-2 top-2 p-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md active:scale-95"
-            >
-              <Send size={20} />
-            </button>
-          </div>
-          <p className="text-center text-xs text-gray-400 mt-3 font-medium">
-            AI can make mistakes. Please verify important information.
-          </p>
-        </div>
-      </main>
+      <ChatArea 
+        messages={messages} 
+        loading={loading} 
+        input={input} 
+        setInput={setInput} 
+        handleSend={handleSend} 
+        messagesEndRef={messagesEndRef}
+        disableInput={loading}
+      />
     </div>
   );
 }
