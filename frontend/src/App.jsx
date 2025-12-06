@@ -170,9 +170,9 @@ export default function App() {
         method: 'POST',
         body: formData,
       });
-      
+
       if (!response.ok) throw new Error("Upload failed");
-      
+
       const data = await response.json();
       setFileContent(data.content);
       setFileStatus('success');
@@ -180,8 +180,12 @@ export default function App() {
       console.error(error);
       setFileStatus('error');
       setFileName("Upload Failed");
+    } finally {
+      // Clear the input value so user can re-upload the same file if needed
+      try { e.target.value = ''; } catch (err) { /* ignore */ }
     }
   };
+
 
   const handleSend = async () => {
     if (!input.trim() && !fileContent) return; 
