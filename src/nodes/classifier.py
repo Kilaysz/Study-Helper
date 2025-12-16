@@ -1,0 +1,64 @@
+from langchain_core.prompts import ChatPromptTemplate
+from src.utils.llm_setup import get_llm
+
+def message_classifier_node(state):
+    """
+    DETERMINES the intent (Mode).
+    It does not route; it only updates the state with 'mode'.
+    """
+    
+    # 1. PRIORITY: Check for forced flow (e.g. User is answering a quiz)
+    # If the previous node set 'next_step', we respect it and skip the LLM.
+    if state.get("next_step") == "quiz_grade":
+        print("🧠 Classifier: Detecting Quiz Answer -> Skipping LLM.")
+        return {"mode": "quiz_grade"}
+
+    # 2. HEURISTIC: File Upload with no text
+    user_message = state["messages"][-1].content
+    file_content = state.get("file_content", "")
+    
+    if file_content and not user_message.strip():
+        print("🧠 Classifier: File detected with no text -> Summarize.")
+        return {"mode": "summarize"}
+
+    # 3. LLM: Classify intent
+    llm = get_llm()
+    
+    system_prompt = """
+    You are the Intent Classifier for an AI Study Partner. 
+    Classify the user's input into exactly one category:
+    
+    1. 'summarize' -> User wants an overview or explanation of the document.
+    2. 'simplify'  -> User says "explain like I'm 5", "I don't understand", asks for an analogy, or wants a simple explanation.
+    3. 'quiz'      -> User wants to take a test, asks for questions, or wants an exam.
+    4. 'query'     -> General chat, specific questions, web search, or anything else.
+
+    Context:
+    - User has uploaded a file: {has_file}
+    
+    Output ONLY the category name in lowercase.
+    """
+    
+    prompt = ChatPromptTemplate.from_template(system_prompt)
+    chain = prompt | llm
+    
+    try:
+        response = chain.invoke({
+            "has_file": "Yes" if file_content else "No",
+            "input": user_message
+        })
+        
+        decision = response.content.strip().lower()
+        
+        # Cleanup response logic
+        if "quiz" in decision: mode = "quiz"
+        elif "simpl" in decision: mode = "simplify" # Matches "simplify" or "simplifier"
+        elif "summ" in decision: mode = "summarize"
+        else: mode = "query"
+        
+        print(f"🧠 Classifier labeled intent as: {mode}")
+        return {"mode": mode}
+        
+    except Exception as e:
+        print(f"⚠️ Classifier failed: {e}. Defaulting to query.")
+        return {"mode": "query"}

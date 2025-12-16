@@ -2,12 +2,11 @@ from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
+from src.utils.llm_setup import get_llm
 import shutil
 import os
 import uvicorn
 
-# --- INTERNAL IMPORTS ---
-# Ensure your 'src' folder has an __init__.py file so these work
 from src.graph import build_graph
 from src.utils.pdf_loader import load_pdf_content
 
@@ -88,10 +87,15 @@ async def chat_endpoint(request: ChatRequest):
     2. Invokes the LangGraph agent.
     3. Returns the final response.
     """
-    if not agent_app:
-        raise HTTPException(status_code=500, detail="Agent not initialized")
+    # if not agent_app:
+    #     raise HTTPException(status_code=500, detail="Agent not initialized")
 
     try:
+        # llm_instance = get_llm()
+        # print(f"🤖 Invoking LLM...")
+        # response = llm_instance.invoke(request.message)
+        # return {"response": response.content}
+
         # 1. Prepare the Input State
         # We append the latest user message to the history
         current_messages = request.history + [{"role": "user", "content": request.message}]

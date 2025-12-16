@@ -1,2 +1,1 @@
-cd frontend
-npm run dev
+uv run python server.py
