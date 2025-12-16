@@ -5,7 +5,7 @@ def route_decision(state) -> Literal["query", "summarize", "simplify", "quiz", "
     Traffic Cop: Reads state['mode'] and directs to the correct node.
     """
     mode = state.get("mode", "query")
-    
+
     # Map the mode string to the exact routing key defined in graph.py
     if mode == "simplify":
         return "simplify"

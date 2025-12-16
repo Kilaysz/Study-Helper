@@ -6,9 +6,7 @@ def message_classifier_node(state):
     DETERMINES the intent (Mode).
     It does not route; it only updates the state with 'mode'.
     """
-    
-    # 1. PRIORITY: Check for forced flow (e.g. User is answering a quiz)
-    # If the previous node set 'next_step', we respect it and skip the LLM.
+    # 1. HEURISTIC: Next Step is Quiz Grading
     if state.get("next_step") == "quiz_grade":
         print("🧠 Classifier: Detecting Quiz Answer -> Skipping LLM.")
         return {"mode": "quiz_grade"}
@@ -36,7 +34,9 @@ def message_classifier_node(state):
     Context:
     - User has uploaded a file: {has_file}
     
-    Output ONLY the category name in lowercase.
+    User Message: "{input}"
+    
+    Output ONLY the category name in lowercase. Do not add punctuation or explanation.
     """
     
     prompt = ChatPromptTemplate.from_template(system_prompt)
@@ -49,11 +49,11 @@ def message_classifier_node(state):
         })
         
         decision = response.content.strip().lower()
-        
+        print(f"🧠 Classifier LLM Response: {decision}")
         # Cleanup response logic
         if "quiz" in decision: mode = "quiz"
-        elif "simpl" in decision: mode = "simplify" # Matches "simplify" or "simplifier"
-        elif "summ" in decision: mode = "summarize"
+        elif "simplify" in decision: mode = "simplify" # Matches "simplify" or "simplifier"
+        elif "summarize" in decision: mode = "summarize"
         else: mode = "query"
         
         print(f"🧠 Classifier labeled intent as: {mode}")

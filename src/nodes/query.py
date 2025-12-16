@@ -1,22 +1,37 @@
+# src/nodes/query.py
+from langchain_core.messages import SystemMessage
 from src.utils.llm_setup import get_llm
-from src.tools import get_all_tools # Ensure src/tools.py exists
+from src.tools import get_all_tools
 
 def query_node(state):
     """
-    Handles general queries using Tools (Web Search, Wikipedia, etc).
+    Handles general queries and injects formatting instructions.
     """
     llm = get_llm()
-    user_input = state["messages"][-1].content
     
-    # Bind tools so the LLM can use them if needed
+    # Bind tools
     tools = get_all_tools()
     llm_with_tools = llm.bind_tools(tools)
     
-    print(f"🌐 Query Agent processing: '{user_input}'")
+    # 2. Define the System Prompt for Formatting
+    system_instruction = SystemMessage(content="""
+    You are a helpful AI Study Partner
+    please do some web search (required) to validate your answers.
+
+    When answering user queries, always follow these    
+    FORMATTING RULES:
+    - Use **Markdown** for all responses.
+    - Use **Bold** for key terms.
+    - Use `### Headers` to organize long answers.
+    - Use lists (bullets or numbers) for steps or facts.
+    - If displaying data, use Markdown Tables.
+    """)
+
+    messages_with_prompt = [system_instruction] + state["messages"]
     
-    # The LLM will decide: Answer directly OR Call a tool
-    # LangGraph's prebuilt ToolNode (if used) would handle execution,
-    # but here we rely on the model's internal reasoning or direct response.
-    response = llm_with_tools.invoke(state["messages"])
+    print(f"🌐 Query Agent processing...")
+    
+    # 4. Invoke with the Prompt
+    response = llm_with_tools.invoke(messages_with_prompt)
     
     return {"messages": [response]}

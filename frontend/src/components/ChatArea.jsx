@@ -1,5 +1,6 @@
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { Send, User, Sparkles } from 'lucide-react';
 
 export default function ChatArea({ 
@@ -28,17 +29,24 @@ export default function ChatArea({
 
             {/* Message Bubble */}
             <div className={`
-              max-w-[80%] lg:max-w-[70%] px-5 py-4 rounded-2xl shadow-sm text-sm leading-relaxed
+              max-w-[85%] lg:max-w-[75%] px-5 py-4 rounded-2xl shadow-sm text-sm leading-relaxed overflow-hidden
               ${msg.role === 'user' 
                 ? 'bg-blue-600 text-white rounded-tr-sm' 
                 : 'bg-gray-50 border border-gray-100 text-gray-800 rounded-tl-sm'}
             `}>
               {msg.role === 'assistant' ? (
-                <div className="prose prose-sm max-w-none text-gray-800 prose-p:leading-relaxed prose-pre:bg-gray-200 prose-pre:text-gray-700">
-                  <ReactMarkdown>{msg.content}</ReactMarkdown>
+                <div className="prose prose-sm max-w-none text-gray-800 
+                  prose-p:leading-relaxed 
+                  prose-pre:bg-gray-200 prose-pre:text-gray-700
+                  prose-table:border-collapse prose-table:border prose-table:border-gray-300
+                  prose-th:bg-gray-100 prose-th:p-2 prose-th:border prose-th:border-gray-300
+                  prose-td:p-2 prose-td:border prose-td:border-gray-300">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {msg.content}
+                  </ReactMarkdown>
                 </div>
               ) : (
-                msg.content
+                <div className="whitespace-pre-wrap">{msg.content}</div>
               )}
             </div>
 
@@ -69,20 +77,20 @@ export default function ChatArea({
 
       {/* Input Area */}
       <div className="p-6 bg-white border-t border-gray-100">
-        <div className="max-w-7xl mx-auto relative group">
+        <div className="max-w-4xl mx-auto relative group">
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
             placeholder={loading ? "Waiting for response..." : `Type your message here...`}
-            disabled={loading}
+            disabled={disableInput}
             className="w-full pl-5 pr-14 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all shadow-sm placeholder-gray-400 text-gray-700"
           />
           <button 
             onClick={handleSend}
             disabled={disableInput}
-            className="absolute right-3 top-3 p-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md active:scale-95"
+            className="absolute right-2 top-2 p-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md active:scale-95"
           >
             <Send size={20} />
           </button>

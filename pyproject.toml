@@ -5,6 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "arxiv>=2.3.1",
     "beautifulsoup4>=4.14.3",
     "duckduckgo-search>=8.1.1",
     "fastapi>=0.123.10",
@@ -14,6 +15,7 @@ dependencies = [
     "langchain-experimental>=0.4.1",
     "langchain-ollama>=1.0.0",
     "langchain-openai>=1.1.0",
+    "langchain-tavily>=0.2.15",
     "langchain-text-splitters>=1.0.0",
     "langgraph>=1.0.4",
     "pymupdf4llm>=0.2.6",
@@ -23,4 +25,6 @@ dependencies = [
     "streamlit>=1.52.0",
     "tavily-python>=0.7.13",
     "uvicorn>=0.38.0",
+    "wikipedia>=1.4.0",
+    "wolframalpha>=5.1.3",
 ]

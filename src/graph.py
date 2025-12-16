@@ -1,6 +1,10 @@
 from langgraph.graph import StateGraph, END, START
-from src.state import AgentState
+from langgraph.prebuilt import ToolNode, tools_condition 
 
+from src.state import AgentState
+from src.tools import get_all_tools
+
+# Node Imports
 from src.nodes.classifier import message_classifier_node
 from src.nodes.router import route_decision
 from src.nodes.query import query_node
@@ -19,10 +23,11 @@ def build_graph():
     workflow.add_node("summarizer_agent", summarizer_node)
     workflow.add_node("quiz_agent", quiz_node)
     workflow.add_node("quiz_grader", quiz_grader_node)
-
+    
+    # 2. Start at Classifier
     workflow.add_edge(START, "classifier")
     
-    # 3. Conditional Routing
+    # 3. Router Logic
     workflow.add_conditional_edges(
         "classifier", 
         route_decision,
@@ -35,13 +40,11 @@ def build_graph():
         }
     )
 
-    # 4. Connect to END
-    workflow.add_edge("query_agent", END) 
-    workflow.add_edge("simplifier_agent", END) # Fixed name match
+    # 4. Standard Endings
+    workflow.add_edge("simplifier_agent", END)
     workflow.add_edge("summarizer_agent", END)
     workflow.add_edge("quiz_agent", END)
     workflow.add_edge("quiz_grader", END)
 
     app = workflow.compile()
-
     return app

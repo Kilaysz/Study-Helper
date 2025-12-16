@@ -1,6 +1,5 @@
 import os
 import base64
-from langchain_community.tools.tavily_search import TavilySearchResults
 from langchain_community.utilities import ArxivAPIWrapper, WikipediaAPIWrapper
 from langchain_community.tools import ArxivQueryRun, WikipediaQueryRun
 from langchain_experimental.utilities import PythonREPL
@@ -9,9 +8,10 @@ from langchain_community.tools.wolfram_alpha import WolframAlphaQueryRun
 from langchain_core.tools import tool
 from langchain_community.chat_models import ChatOllama
 from langchain_core.messages import HumanMessage
+from langchain_community.tools.tavily_search import TavilySearchResults
 
-# ... existing search tools ...
 def get_web_search_tool():
+    # Use TavilySearchResults class
     return TavilySearchResults(max_results=3)
 
 def get_arxiv_tool():

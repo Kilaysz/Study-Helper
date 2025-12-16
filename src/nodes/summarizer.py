@@ -1,18 +1,14 @@
 from src.utils.llm_setup import get_llm
+from src.tools import get_all_tools
 
 def summarizer_node(state):
     """
     Summarizes the uploaded document.
     """
     llm = get_llm()
+    tools = get_all_tools()
+    llm_with_tools = llm.bind_tools(tools)
     file_content = state.get("file_content", "")
-    
-    if not file_content:
-        return {"messages": ["⚠️ Please upload a document for me to summarize."]}
-    
-    # We limit content to avoid overflowing context window (approx 4000 chars)
-    # For a production app, you'd use a Map-Reduce chain here for full docs.
-    context = file_content[:4000]
     
     prompt = f"""
     You are an expert Study Assistant.
@@ -22,8 +18,11 @@ def summarizer_node(state):
     - List key concepts and definitions.
     - Use bullet points for readability.
     
-    Text:
-    {context}
+    File:
+    {file_content}
+
+    ️Text:
+    {state['messages'][-1].content}
     """
     
     print("📝 Generating Summary...")

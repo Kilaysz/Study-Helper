@@ -89,11 +89,10 @@ export default function Sidebar({
         `}>
           <div className="flex flex-col items-center justify-center text-center px-4">
             {fileStatus === 'uploading' ? (
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600" aria-hidden="true"></div>
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
             ) : fileStatus === 'success' ? (
-              <div className="flex items-center gap-2 text-green-700 text-sm font-medium" title={fileName || 'Uploaded file'}>
-                <CheckCircle2 size={18} aria-hidden="true" />
-                <span className="truncate max-w-[10rem]">{fileName ? (fileName.length > 15 ? `${fileName.slice(0,15)}...` : fileName) : 'Uploaded'}</span>
+              <div className="flex items-center gap-2 text-green-700 text-sm font-medium">
+                <CheckCircle2 size={18} /> <span>{fileName.slice(0, 15)}...</span>
               </div>
             ) : (
               <>

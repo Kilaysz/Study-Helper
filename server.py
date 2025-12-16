@@ -2,28 +2,31 @@ from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
-from src.utils.llm_setup import get_llm
+from dotenv import load_dotenv
 import shutil
 import os
 import uvicorn
+import traceback
 
+# Internal Imports
 from src.graph import build_graph
 from src.utils.pdf_loader import load_pdf_content
 
-# --- APP SETUP ---
+# Load Environment
+load_dotenv()
+
 app = FastAPI(title="Study Partner Agent API")
 
-# Configure CORS to allow your React app to connect
+# CORS Setup
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],  # In production, replace with ["http://localhost:5173"]
+    allow_origins=["*"], # Allow all for dev
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Initialize the Agent Graph ONCE when the server starts
-# This compiles the graph and prepares it for requests
+# Initialize Graph
 try:
     agent_app = build_graph()
     print("✅ LangGraph Agent initialized successfully.")
@@ -31,98 +34,77 @@ except Exception as e:
     print(f"❌ Failed to initialize LangGraph: {e}")
     agent_app = None
 
-# --- DATA MODELS ---
+# Models
 class ChatRequest(BaseModel):
     message: str
     file_content: Optional[str] = None
-    # We default to "auto" so the Router Node can decide
-    mode: Optional[str] = "auto" 
-    # History comes in as a list of {role: str, content: str}
     history: List[Dict[str, str]] = []
-
-# --- ENDPOINTS ---
 
 @app.get("/")
 def read_root():
     return {"status": "Study Partner Agent is running"}
 
+
 @app.post("/upload")
 async def upload_file(file: UploadFile = File(...)):
     """
-    Handles PDF uploads.
-    1. Saves the file to a temporary 'data/' folder.
-    2. Uses 'pdf_loader.py' to convert it to text.
-    3. Returns the text to the Frontend.
+    Handles PDF uploads. Now only extracts text and returns it.
     """
     try:
-        # Create data directory if it doesn't exist
         os.makedirs("data", exist_ok=True)
-        
         file_path = f"data/{file.filename}"
         
-        # Save the file
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
             
         print(f"📂 File saved: {file_path}")
         
-        # Extract text
+        # 1. Extract Text
         markdown_text = load_pdf_content(file_path)
+        
+        # REMOVED: index_document(markdown_text, file.filename)
+        print("✅ Document text extracted (Vector Indexing Skipped).")
         
         return {
             "filename": file.filename, 
             "content": markdown_text,
             "status": "success"
         }
-        
     except Exception as e:
-        print(f"Error processing file: {e}")
+        print(f"❌ Upload Error: {e}")
         raise HTTPException(status_code=500, detail=f"File upload failed: {str(e)}")
+
 
 @app.post("/chat")
 async def chat_endpoint(request: ChatRequest):
-    """
-    The main Agent Loop.
-    1. Constructs the state from the React request.
-    2. Invokes the LangGraph agent.
-    3. Returns the final response.
-    """
-    # if not agent_app:
-    #     raise HTTPException(status_code=500, detail="Agent not initialized")
+    if not agent_app:
+        raise HTTPException(status_code=500, detail="Agent not initialized")
 
     try:
-        # llm_instance = get_llm()
-        # print(f"🤖 Invoking LLM...")
-        # response = llm_instance.invoke(request.message)
-        # return {"response": response.content}
-
-        # 1. Prepare the Input State
-        # We append the latest user message to the history
+        print(f"📩 Processing Message: {request.message}")
+        
+        # Prepare LangGraph Inputs
+        # Note: We do NOT pass 'mode' anymore. The 'classifier' node handles it.
         current_messages = request.history + [{"role": "user", "content": request.message}]
         
         inputs = {
             "messages": current_messages,
-            "file_content": request.file_content,
-            "mode": request.mode or "auto"
+            "file_content": request.file_content
         }
         
-        print(f"🤖 Agent invoked with mode: {inputs['mode']}")
-        
-        # 2. Run the Agent
-        # .invoke() runs the graph until it hits the END node
+        # Run the Graph
         result = agent_app.invoke(inputs)
         
-        # 3. Extract Response
-        # The result state contains the full list of messages. We want the last one.
+        # Get Response
         last_message = result["messages"][-1]
-        response_text = last_message.content
         
-        return {"response": response_text}
+        return {"response": last_message.content}
         
     except Exception as e:
-        print(f"❌ Error during chat processing: {e}")
+        error_details = traceback.format_exc()
+        print(f"❌ CHAT ERROR:\n{error_details}")
         raise HTTPException(status_code=500, detail=str(e))
 
-# --- ENTRY POINT ---
 if __name__ == "__main__":
+    print("🚀 Starting Server on http://0.0.0.0:8000")
     uvicorn.run("server:app", host="0.0.0.0", port=8000, reload=True)
