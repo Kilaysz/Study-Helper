@@ -1,42 +1,39 @@
 from src.utils.llm_setup import get_llm
-# REMOVED: from src.utils.vector_store import get_retriever
 
 def quiz_node(state):
-    """
-    Generates a quiz based on the uploaded file content or the user's topic.
-    NOTE: This version uses raw file_content (Context Stuffing), not Vector DB.
-    """
     llm = get_llm()
     user_input = state["messages"][-1].content
-    file_content = state.get("file_content", "") # <-- Get the raw file content
-
-    # --- RAG/Context Logic ---
-    context_text = ""
     
-    if file_content:
-        # Use the first 4000 tokens of the document as context for the quiz
-        # This is a simple form of RAG suitable for small files.
-        context_text = file_content[:8000] 
-        instruction = "Create a comprehensive exam based *only* on the provided document excerpt."
-    else:
-        # Fallback if no file uploaded
-        context_text = f"Topic: {user_input}"
-        instruction = f"Create a conceptual exam about '{user_input}'."
+    # --- RAG Logic ---
+    print("🔍 Retrieving relevant context for quiz...")
+    retriever = get_retriever()
+    
+    # Search the vector DB for content relevant to the user's request
+    relevant_docs = retriever.invoke(user_input)
+    
+    # Combine the found chunks into one context string
+    context_text = "\n\n".join([doc.page_content for doc in relevant_docs])
+    
+    if not context_text:
+        # Fallback if DB is empty or search fails
+        context_text = state.get("file_content", "")[:5000]
 
-    # 2. Generate Question
+    instruction = f"Create a comprehensive exam about '{user_input}' based on the context."
+
     prompt = f"""
     You are a Professor creating a quiz.
     
-    Context:
+    Context (Derived from Course Materials):
     {context_text}
     
     Task:
     {instruction}
     
     Format:
-    - Ask **twenty** multiple choice questions and 5 essay questions.
-    - Provide 4 options (A, B, C, D) for multiple choice questions.
+    - Ask **five** multiple choice questions.
+    - Provide 4 options (A, B, C, D).
     - **DO NOT** reveal the answer yet.
+
     """
     
     response = llm.invoke(prompt)

@@ -101,7 +101,7 @@ export default function Sidebar({
               </>
             )}
           </div>
-          <input type="file" className="hidden" accept=".pdf,.pptx" onChange={handleFileUpload} />
+          <input type="file" className="hidden" accept=".png,.jpg,.pdf,.pptx" onChange={handleFileUpload} />
         </label>
       </div>
     </aside>

@@ -6,16 +6,12 @@ def message_classifier_node(state):
     DETERMINES the intent (Mode).
     It does not route; it only updates the state with 'mode'.
     """
-    # 1. HEURISTIC: Next Step is Quiz Grading
-    if state.get("next_step") == "quiz_grade":
-        print("🧠 Classifier: Detecting Quiz Answer -> Skipping LLM.")
-        return {"mode": "quiz_grade"}
 
     # 2. HEURISTIC: File Upload with no text
     user_message = state["messages"][-1].content
-    file_content = state.get("file_content", "")
+    file_name = state.get("file_name", "") # Check for name
     
-    if file_content and not user_message.strip():
+    if file_name and not user_message.strip():
         print("🧠 Classifier: File detected with no text -> Summarize.")
         return {"mode": "summarize"}
 
@@ -28,8 +24,8 @@ def message_classifier_node(state):
     
     1. 'summarize' -> User wants an overview or explanation of the document.
     2. 'simplify'  -> User says "explain like I'm 5", "I don't understand", asks for an analogy, or wants a simple explanation.
-    3. 'quiz'      -> User wants to take a test, asks for questions, or wants an exam.
-    4. 'query'     -> General chat, specific questions, web search, or anything else.
+    3. 'quiz'      -> User wants to take a test, asks for questions, or wants an exam (not for answering questions nor checking the quiz answers).
+    4. 'query'     -> General chat, specific questions, web search, answering the quiz we give, or anything else.
 
     Context:
     - User has uploaded a file: {has_file}
@@ -44,7 +40,7 @@ def message_classifier_node(state):
     
     try:
         response = chain.invoke({
-            "has_file": "Yes" if file_content else "No",
+            "has_file": "Yes" if file_name else "No",
             "input": user_message
         })
         

@@ -51,7 +51,9 @@ async def upload_file(file: UploadFile = File(...)):
     Handles PDF uploads. Now only extracts text and returns it.
     """
     try:
-        os.makedirs("data", exist_ok=True)
+        if os.path.exists("data"):
+            shutil.rmtree("data")
+        os.makedirs("data")
         file_path = f"data/{file.filename}"
         
         with open(file_path, "wb") as buffer:
@@ -61,7 +63,7 @@ async def upload_file(file: UploadFile = File(...)):
         
         # 1. Extract Text
         markdown_text = load_pdf_content(file_path)
-        
+        print(markdown_text[:500])  # Print first 500 chars for verification
         # REMOVED: index_document(markdown_text, file.filename)
         print("✅ Document text extracted (Vector Indexing Skipped).")
         
