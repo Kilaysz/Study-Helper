@@ -1,6 +1,6 @@
 from typing import Literal
 
-def route_decision(state) -> Literal["query", "summarize", "simplify", "quiz", "quiz_grade"]:
+def route_decision(state) -> Literal["query", "summarize", "simplify", "quiz", "quiz_grade", "advisor"]:
     """
     Traffic Cop: Reads state['mode'] and directs to the correct node.
     """
@@ -15,6 +15,8 @@ def route_decision(state) -> Literal["query", "summarize", "simplify", "quiz", "
         return "quiz"
     elif mode == "quiz_grade":
         return "quiz_grade"
+    elif mode == "advisor":
+        return "advisor"
     else:
         # Default fallback
         return "query"

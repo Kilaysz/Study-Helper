@@ -6,12 +6,14 @@ def message_classifier_node(state):
     DETERMINES the intent (Mode).
     It does not route; it only updates the state with 'mode'.
     """
-
-    # 2. HEURISTIC: File Upload with no text
     user_message = state["messages"][-1].content
-    file_name = state.get("file_name", "") # Check for name
     
-    if file_name and not user_message.strip():
+    # 1. Get the actual content (since you don't store file_name)
+    file_content = state.get("file_content", "")
+    
+    # 2. HEURISTIC: File detected (has content) but no user text
+    # If the user just uploaded a file and hit send, default to "summarize"
+    if file_content and not user_message.strip():
         print("🧠 Classifier: File detected with no text -> Summarize.")
         return {"mode": "summarize"}
 
@@ -19,20 +21,21 @@ def message_classifier_node(state):
     llm = get_llm()
     
     system_prompt = """
-    You are the Intent Classifier for an AI Study Partner. 
+    You are the Intent Classifier.
     Classify the user's input into exactly one category:
     
-    1. 'summarize' -> User wants an overview or explanation of the document.
-    2. 'simplify'  -> User says "explain like I'm 5", "I don't understand", asks for an analogy, or wants a simple explanation.
-    3. 'quiz'      -> User wants to take a test, asks for questions, or wants an exam (not for answering questions nor checking the quiz answers).
-    4. 'query'     -> General chat, specific questions, web search, answering the quiz we give, or anything else.
+    1. 'summarize' -> User wants an overview of the document.
+    2. 'simplify'  -> User wants a simple explanation or analogy.
+    3. 'quiz'      -> User wants a test/exam.
+    4. 'advisor'   -> User asks for a professor, supervisor, lab, or mentor for a project.
+    5. 'query'     -> General chat or specific questions.
 
     Context:
     - User has uploaded a file: {has_file}
     
     User Message: "{input}"
     
-    Output ONLY the category name in lowercase. Do not add punctuation or explanation.
+    Output ONLY the category name in lowercase.
     """
     
     prompt = ChatPromptTemplate.from_template(system_prompt)
@@ -40,19 +43,20 @@ def message_classifier_node(state):
     
     try:
         response = chain.invoke({
-            "has_file": "Yes" if file_name else "No",
+            # Check if content exists to tell LLM "Yes"
+            "has_file": "Yes" if file_content else "No",
             "input": user_message
         })
         
         decision = response.content.strip().lower()
         print(f"🧠 Classifier LLM Response: {decision}")
-        # Cleanup response logic
+        
         if "quiz" in decision: mode = "quiz"
-        elif "simplify" in decision: mode = "simplify" # Matches "simplify" or "simplifier"
+        elif "simplify" in decision: mode = "simplify"
         elif "summarize" in decision: mode = "summarize"
+        elif "advisor" in decision: mode = "advisor"
         else: mode = "query"
         
-        print(f"🧠 Classifier labeled intent as: {mode}")
         return {"mode": mode}
         
     except Exception as e:

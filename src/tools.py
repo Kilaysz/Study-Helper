@@ -19,6 +19,17 @@ except ImportError:
     from langchain_community.chat_models import ChatOllama
 
 
+@tool
+def ncku_faculty_search(professor_name: str):
+    """
+    Specifically searches for a professor's latest contact info or lab page 
+    on the NCKU CSIE website domain.
+    """
+    search = SerpAPIWrapper()
+    # We force the search to restrict results to the university domain
+    query = f"site:csie.ncku.edu.tw {professor_name} lab research interests"
+    return search.run(query)
+
 # --- 1. Helper Function for Scraping (Reusable) ---
 def scrape_url(url: str):
     """
@@ -139,38 +150,6 @@ def python_calculator(code: str):
     except Exception as e:
         return f"Error executing code: {e}"
 
-@tool
-def describe_image(image_path: str):
-    """
-    Use this tool to 'see' an image. 
-    Pass the full file path of an image (e.g., 'data/chart.png').
-    """
-    if not os.path.exists(image_path):
-        return f"Error: Image file not found at {image_path}"
-
-    try:
-        vision_llm = ChatOllama(model="llava", temperature=0)
-        
-        mime_type, _ = mimetypes.guess_type(image_path)
-        if not mime_type:
-            mime_type = "image/jpeg"
-
-        with open(image_path, "rb") as image_file:
-            image_data = base64.b64encode(image_file.read()).decode("utf-8")
-            
-        message = HumanMessage(
-            content=[
-                {"type": "text", "text": "Describe this image in detail. If it's a chart, explain the data."},
-                {"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{image_data}"}},
-            ]
-        )
-        
-        response = vision_llm.invoke([message])
-        return f"Image Description: {response.content}"
-        
-    except Exception as e:
-        return f"Error processing image: {str(e)}"
-
 def get_all_tools():
     return [
         get_web_search_tool(),
@@ -178,8 +157,8 @@ def get_all_tools():
         get_wiki_tool(),
         get_wolfram_tool(),
         python_calculator,
-        describe_image,
         google_search,    # Now uses SerpAPI
         scrape_website,
         deep_research,    # Now uses SerpAPI
+        ncku_faculty_search
     ]

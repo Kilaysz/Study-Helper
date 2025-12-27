@@ -4,9 +4,7 @@ import ChatArea from './components/ChatArea';
 
 // --- CONFIGURATION ---
 let API_URL = "http://localhost:8000";
-
 try {
-  // Safe check for environment variables
   if (import.meta && import.meta.env && import.meta.env.VITE_API_URL) {
     API_URL = import.meta.env.VITE_API_URL;
   }
@@ -15,7 +13,6 @@ try {
 }
 
 export default function App() {
-  // --- STATE ---
   const [sessions, setSessions] = useState([]);
   const [currentId, setCurrentId] = useState(null);
   
@@ -29,47 +26,42 @@ export default function App() {
   
   const messagesEndRef = useRef(null);
 
+  // --- HELPER: Signal Backend to Delete File ---
+  const clearBackendFile = async () => {
+    try {
+      await fetch(`${API_URL}/delete-file`, { method: 'DELETE' });
+      console.log("Backend file cleared.");
+    } catch (err) {
+      console.error("Failed to clear backend file:", err);
+    }
+  };
+
   // --- INIT & PERSISTENCE ---
 
-  // 1. Load Sessions on Mount
   useEffect(() => {
     const storedSessions = JSON.parse(localStorage.getItem('chat_sessions') || '[]');
     setSessions(storedSessions);
-    
     if (storedSessions.length > 0) {
-      // Load the most recent session
       loadSession(storedSessions[0].id);
     } else {
-      // Start a fresh session
       createNewSession();
     }
   }, []);
 
-  // 2. Save Current Session whenever content changes
   useEffect(() => {
     if (!currentId) return;
-
-    // Don't save if it's just the default greeting and no file
     const isDefault = messages.length === 1 && messages[0].role === 'assistant';
     if (isDefault && !fileContent) return;
 
     const allHistory = JSON.parse(localStorage.getItem('chat_history') || '{}');
-    
-    // Update the history storage
-    allHistory[currentId] = {
-      messages,
-      fileName,
-      fileContent,
-      fileStatus
-    };
+    // Save MESSAGES ONLY (File is ephemeral)
+    allHistory[currentId] = { messages };
     localStorage.setItem('chat_history', JSON.stringify(allHistory));
 
-    // Update the session list (Title & Timestamp)
     setSessions(prev => {
       const existingIndex = prev.findIndex(s => s.id === currentId);
-      
-      // Generate a title from the first user message, or file name, or default
       const firstUserMsg = messages.find(m => m.role === 'user');
+      
       let title = "New Chat";
       if (firstUserMsg) {
         title = firstUserMsg.content.slice(0, 30) + (firstUserMsg.content.length > 30 ? "..." : "");
@@ -82,16 +74,13 @@ export default function App() {
       let newSessions;
       if (existingIndex >= 0) {
         newSessions = [...prev];
-        // Only update title/date, keep id
         newSessions[existingIndex] = { ...newSessions[existingIndex], title, date: new Date().toISOString() };
-        
-        // Move to top if it's the current one being edited
         if (existingIndex !== 0) {
             newSessions.splice(existingIndex, 1);
             newSessions.unshift(newSessionInfo);
         }
       } else {
-        newSessions = [newSessionInfo, ...prev]; // Add to top
+        newSessions = [newSessionInfo, ...prev];
       }
       
       localStorage.setItem('chat_sessions', JSON.stringify(newSessions));
@@ -109,9 +98,14 @@ export default function App() {
       role: 'assistant', 
       content: "Hello! I'm your **AI Study Partner**. \n\nUpload a file or ask me anything—I'll automatically figure out if you need a summary, a fact-check, a quiz, or just a web search!" 
     }]);
+    
+    // Reset Frontend State
     setFileStatus(null);
     setFileName('');
     setFileContent(null);
+    
+    // Reset Backend State
+    clearBackendFile();
   };
 
   const loadSession = (id) => {
@@ -121,34 +115,35 @@ export default function App() {
     if (data) {
       setCurrentId(id);
       setMessages(data.messages || []);
-      setFileName(data.fileName || '');
-      setFileContent(data.fileContent || null);
-      setFileStatus(data.fileStatus || null);
+      
+      // 1. Clear Frontend File State
+      setFileName('');
+      setFileContent(null);
+      setFileStatus(null);
+      
+      // 2. Clear Backend File State (Switching context)
+      clearBackendFile();
     } else {
       createNewSession();
     }
   };
 
   const deleteSession = (e, id) => {
-    e.stopPropagation(); // Prevent triggering selection
-    
+    e.stopPropagation();
     const newSessions = sessions.filter(s => s.id !== id);
     setSessions(newSessions);
     localStorage.setItem('chat_sessions', JSON.stringify(newSessions));
     
-    // Cleanup actual data
     const allHistory = JSON.parse(localStorage.getItem('chat_history') || '{}');
     delete allHistory[id];
     localStorage.setItem('chat_history', JSON.stringify(allHistory));
 
-    // If we deleted the current session, switch to another or create new
     if (id === currentId) {
       if (newSessions.length > 0) loadSession(newSessions[0].id);
       else createNewSession();
     }
   };
 
-  // --- SCROLLING ---
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -181,15 +176,23 @@ export default function App() {
       setFileStatus('error');
       setFileName("Upload Failed");
     } finally {
-      // Clear the input value so user can re-upload the same file if needed
       try { e.target.value = ''; } catch (err) { /* ignore */ }
     }
   };
 
+  // UPDATED: Handle Manual File Delete
+  const handleFileDelete = () => {
+    // 1. Clear Frontend
+    setFileStatus(null);
+    setFileName('');
+    setFileContent(null);
+
+    // 2. Clear Backend
+    clearBackendFile();
+  };
 
   const handleSend = async () => {
     if (!input.trim() && !fileContent) return; 
-    
     const userText = input.trim() || "Analyze this document.";
 
     setInput('');
@@ -209,14 +212,13 @@ export default function App() {
       });
 
       if (!response.ok) throw new Error("API Error");
-
       const data = await response.json();
       setMessages(prev => [...prev, { role: 'assistant', content: data.response }]);
 
     } catch (error) {
       setMessages(prev => [...prev, { 
         role: 'assistant', 
-        content: `⚠️ **Error:** Backend connection failed at \`${API_URL}\`. Is the server running?` 
+        content: `⚠️ **Error:** Backend connection failed at \`${API_URL}\`.` 
       }]);
     } finally {
       setLoading(false);
@@ -229,8 +231,8 @@ export default function App() {
         fileStatus={fileStatus} 
         fileName={fileName} 
         handleFileUpload={handleFileUpload}
+        handleRemoveFile={handleFileDelete} // Pass updated handler
         
-        // Passing new Session props to Sidebar
         sessions={sessions}
         currentId={currentId}
         onNewChat={createNewSession}
