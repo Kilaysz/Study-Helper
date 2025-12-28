@@ -13,18 +13,23 @@ It goes beyond traditional RAG by utilizing **task-specialized agents** that can
 - **Feynman Simplifier**  
   Explains complex concepts using simple language and analogies.  
   *Example: “Explain Transformers like I’m 5.”*
+
 - **Document Q&A (RAG)**  
   Chat with your lecture slides, papers, or notes (PDF).
+
 - **Auto Quiz Generator**  
   Generates quizzes from uploaded PDFs and grades your answers automatically.
+
 - **Deep Research Mode**  
   Falls back to web search (Google / Tavily) when information is not found in documents.
 
 ### 🏫 Academic Advisor Matcher (NCKU CSIE)
 - **Supervisor Discovery**  
   Describe your research idea and get matched with the most relevant professor.
+
 - **Permanent Faculty Knowledge Base**  
   Uses a dedicated vector database built from scraped NCKU CSIE faculty data.
+
 - **Email Drafting Agent**  
   Automatically generates professional emails to contact the recommended advisor.
 
@@ -33,11 +38,22 @@ It goes beyond traditional RAG by utilizing **task-specialized agents** that can
 ## ⚡ System Architecture
 
 ### 🧩 Agentic Design with LangGraph
-An intent classifier routes user requests to specialized agents:
-- **Tutor Agent** → Explanation & simplification
-- **Quiz Agent** → Quiz creation & grading
-- **Advisor Agent** → Supervisor matching
-- **Query Agent** → Document Q&A (RAG)
+
+The system uses **LangGraph** to orchestrate multiple specialized agents. An **intent classifier** routes user requests to the appropriate agent:
+
+| Agent | Responsibility | Example Use Case |
+|-------|----------------|----------------|
+| **Tutor Agent** | Explains and simplifies complex concepts using analogies or plain language | “Explain Transformers like I’m 5.” |
+| **Quiz Agent** | Generates quizzes from uploaded PDFs, collects answers, and automatically grades them | “Give me a quiz on this lecture slide.” |
+| **Advisor Agent** | Matches your research ideas to relevant NCKU CSIE professors and drafts contact emails | “I want to do a project on blockchain for supply chains. Who should I work with?” |
+| **Query Agent (RAG)** | Answers questions from user-uploaded documents or lecture notes | “What is the main formula on page 5 of this PDF?” |
+| **Summarizer Agent** | Summarizes PDFs or lecture slides into concise notes | “Summarize this document in 3 key points.” |
+| **Feynman Simplifier Node** | Uses the Feynman technique to explain any topic in simple terms | “Explain Recurrent Neural Networks like I’m 5.” |
+
+> The **intent classifier** detects the user’s request type (study, quiz, research, or advisor matching) and routes it to the proper agent.  
+> Each agent accesses either the **user ephemeral vector store** (`chroma_db_user`) or the **permanent faculty vector store** (`chroma_db_faculty`) depending on the task.
+
+---
 
 ### 🧠 Dual-Memory Vector System
 
@@ -53,10 +69,10 @@ An intent classifier routes user requests to specialized agents:
 
 ## 🛠️ Tech Stack
 
-- **Backend:** Python, FastAPI, LangChain, LangGraph
-- **LLMs & Embeddings:** Ollama (Llama3 / Mistral / Gemma), `nomic-embed-text`
-- **Frontend:** React, Tailwind CSS, Lucide Icons
-- **Vector Database:** ChromaDB (Local)
+- **Backend:** Python, FastAPI, LangChain, LangGraph  
+- **LLMs & Embeddings:** Ollama (Llama3 / Mistral / Gemma), `nomic-embed-text`  
+- **Frontend:** React, Tailwind CSS, Lucide Icons  
+- **Vector Database:** ChromaDB (Local)  
 - **Tools:** SerpAPI / Tavily (Web Search), BeautifulSoup (Scraping)
 
 ---
@@ -219,7 +235,3 @@ LangChain & LangGraph
 Ollama
 ChromaDB
 NCKU CSIE Faculty
-
-
-
-
