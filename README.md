@@ -175,68 +175,8 @@ Get instant grading & feedback after answering
 └── server.py               # FastAPI entry point
 ```
 
-```mermaid
-graph TD
-    %% --- Nodes ---
-    Start((START))
-    End((END))
-    
-    %% The Router
-    Classifier{Intent Classifier}
-
-    %% The Agents
-    Advisor[Advisor Agent]
-    Quiz[Quiz Agent]
-    Summarizer[Summarizer Agent]
-    Feynman[Feynman Agent / Simplifier]
-    Query[Query Agent]
-
-    %% The Tool Execution Nodes (Specific to each Agent)
-    Tools_Advisor[Tool Node: Advisor Tools]
-    Tools_Query[Tool Node: Query Tools]
-    Tools_Feynman[Tool Node: Simplifier Tools]
-
-    %% --- Edges: Input to Router ---
-    Start --> Classifier
-
-    %% --- Edges: Router to Agents ---
-    Classifier -- "mode: advisor" --> Advisor
-    Classifier -- "mode: quiz" --> Quiz
-    Classifier -- "mode: summarize" --> Summarizer
-    Classifier -- "mode: simplify" --> Feynman
-    Classifier -- "mode: query" --> Query
-
-    %% --- Loops: Agent <-> Tool Logic (Recursive Edges) ---
-    
-    %% 1. Advisor Loop
-    Advisor -- "Call Tool (e.g. Faculty Search)" --> Tools_Advisor
-    Tools_Advisor -- "Tool Output" --> Advisor
-    Advisor -- "Final Answer" --> End
-
-    %% 2. Query Loop
-    Query -- "Call Tool (e.g. Google Search)" --> Tools_Query
-    Tools_Query -- "Tool Output" --> Query
-    Query -- "Final Answer" --> End
-
-    %% 3. Feynman/Simplifier Loop
-    Feynman -- "Call Tool (e.g. Analogy Search)" --> Tools_Feynman
-    Tools_Feynman -- "Tool Output" --> Feynman
-    Feynman -- "Final Answer" --> End
-
-    %% --- Linear Paths (No Tools) ---
-    Summarizer --> End
-    Quiz --> End
-
-    %% --- Conceptual Data Access (Internal Node Logic) ---
-    %% These are not graph nodes, but internal actions
-    subgraph Data Access
-        direction BT
-        Advisor -.-> DB_Faculty[(Faculty Vector DB)]
-        Quiz -.-> DB_User[(User Content DB)]
-        Summarizer -.-> DB_User
-        Query -.-> DB_User
-    end
-```
+### DAG
+![System Architecture](./DAG.png)
 
 ### 🛡️ License
 Distributed under the MIT License.
