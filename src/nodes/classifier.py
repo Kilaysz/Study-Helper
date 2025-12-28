@@ -28,7 +28,7 @@ def message_classifier_node(state):
     2. 'simplify'  -> User wants a simple explanation or analogy.
     3. 'quiz'      -> User wants a test/exam.
     4. 'advisor'   -> User asks for a professor, supervisor, lab, or mentor for a project.
-    5. 'query'     -> General chat or specific questions.
+    5. 'query'     -> General chat , specific questions , answering quiz/exams that you give earlier( in multiple choice format).
 
     Context:
     - User has uploaded a file: {has_file}

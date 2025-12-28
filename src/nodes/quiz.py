@@ -1,21 +1,21 @@
-from langchain_core.messages import SystemMessage
+import os
+from langchain_core.messages import SystemMessage, AIMessage
 from src.utils.llm_setup import get_llm
-from src.utils.vector_store import get_retriever
 
 def quiz_node(state):
     llm = get_llm()
-    user_input = state["messages"][-1].content
     
-    context_text = state.get("file_content", "")[:15000]
-
+    # 1. Get raw content (Limit to 50k chars to fit context)
+    context_text = state.get("file_content", "")[:50000]
+    
     prompt = f"""
-    You are a Professor creating a quiz.
+    You are a Professor creating a quiz based on the provided text.
     
     ### CONTEXT
     {context_text}
     
     ### TASK
-    Create a 5-question multiple choice exam about: "{user_input}".
+    Create a 5-question multiple choice exam.
     
     ### FORMAT
     1. **The Quiz:**
@@ -38,7 +38,7 @@ def quiz_node(state):
     response = llm.invoke(messages)
     full_content = response.content
     
-    # --- 3. Parse Output (Split Questions vs. Answers) ---
+    # --- 2. Parse Output (Split Questions vs. Answers) ---
     if "### ANSWER KEY ###" in full_content:
         parts = full_content.split("### ANSWER KEY ###")
         quiz_for_user = parts[0].strip()
@@ -46,10 +46,25 @@ def quiz_node(state):
     else:
         # Fallback if model forgets the separator
         quiz_for_user = full_content
-        answer_key = "Error: Answer Key not generated."
+        answer_key = "Error: Answer Key not generated. Please check the document content."
 
+    # --- 3. Write Answer Key to File ---
+    # We save it in 'uploads' so it gets cleaned up automatically by your delete endpoint
+    output_dir = "uploads"
+    os.makedirs(output_dir, exist_ok=True)
+    file_path = os.path.join(output_dir, "quiz_solutions.txt")
+    
+    try:
+        with open(file_path, "w", encoding="utf-8") as f:
+            f.write(answer_key)
+        print(f"✅ Answer Key saved to: {file_path}")
+    except Exception as e:
+        print(f"❌ Failed to save answer key: {e}")
+
+    # --- 4. Return ---
+    # We still return 'quiz_answers' in state in case other nodes need it immediately
     return {
-        "messages": [{"role": "assistant", "content": quiz_for_user}],
+        "messages": [AIMessage(content=quiz_for_user)],
         "quiz_answers": answer_key,
         "next_step": "quiz_grade" 
     }
