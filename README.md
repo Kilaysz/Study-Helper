@@ -80,11 +80,13 @@ ollama pull llama3
 git clone https://github.com/Kilaysz/Study-Helper.git
 cd Study-Helper
 
-python -m venv .venv
-source .venv/bin/activate   # Windows: .venv\Scripts\activate
+# Create venv and install dependencies
+uv sync
 
-pip install -r requirements.txt
+# Activate virtual environment
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
 ```
+
 
 ## 2. Environment Variables
 Create a .env file in the project root:
@@ -153,26 +155,45 @@ Answer:
 Get instant grading & feedback after answering
 ### 📂 Project Structure
 ```bash
+├── uv.lock
+├── DAG.png
+├── .gitignore
+├── .python-version
+├── pyproject.toml
+├── README.md
+├── run.ps1                   # Server startup script
+├── server.py                 # FastAPI backend entry point
 ├── data/                   # Scraped professors.json (Permanent)
 ├── uploads/                # Temporary user PDFs
 ├── chroma_db_faculty/      # Faculty Vector DB (Permanent)
 ├── chroma_db_user/         # User Vector DB (Ephemeral)
-├── frontend/               # React Frontend
-├── src/
-│   ├── graph.py            # LangGraph workflow
-│   ├── state.py            # Agent state schema
-│   ├── tools.py            # Web search & utilities
-│   ├── nodes/
-│   │   ├── advisor.py      # Supervisor matching logic
-│   │   ├── classifier.py   # Intent router
-│   │   ├── query.py        # RAG Q&A
-│   │   ├── simplifier.py   # Feynman explanations
-│   │   └── quiz.py
-│   └── utils/
-│       ├── vector_store.py # Dual-DB management
-│       └── pdf_loader.py   # PDF parsing
-├── scrape_professors.py    # Faculty scraper
-└── server.py               # FastAPI entry point
+├── frontend/                 # React Frontend
+│   ├── package.json
+│   ├── run.ps1               # Frontend startup script
+│   ├── vite.config.js
+│   └── src/
+│       ├── App.jsx           # Main React App component
+│       ├── main.jsx          # Entry point
+│       └── components/
+│           ├── ChatArea.jsx  # Chat interface component
+│           └── Sidebar.jsx   # Sidebar navigation component
+├──src/                      # Backend Source Code
+    ├── graph.py              # LangGraph workflow & edge definitions
+    ├── state.py              # AgentState schema definition
+    ├── tools.py              # External tool definitions
+    ├── nodes/                # Agent Logic Nodes
+    │   ├── classifier.py     # Intent classification node
+    │   ├── query.py          # RAG & Q/A node
+    │   ├── quiz.py           # Quiz generation node
+    │   ├── router.py         # Routing decision logic
+    │   ├── simplifier.py     # Feynman simplifier node
+    │   ├── summarizer.py     # Document summarization node
+    │   └── advisor.py        # Advisor Recommendation mode
+    └── utils/                # Utilities
+        ├── llm_setup.py      # LLM initialization & config
+        ├── pdf_loader.py     # PDF parsing & text extraction
+        ├── scrape_professors.py    # Faculty scraper
+        └── vector_store.py # Chunking and Vector DB storing
 ```
 
 ### DAG
