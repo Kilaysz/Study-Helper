@@ -1,7 +1,7 @@
 from langchain_core.messages import SystemMessage
 from src.utils.llm_setup import get_llm
 from src.utils.vector_store import get_retriever
-from src.tools import get_all_tools
+from src.tools import ncku_faculty_search # <--- Import ONLY the specific tool
 
 def advisor_node(state):
     """
@@ -18,7 +18,7 @@ def advisor_node(state):
     context_text = ""
     try:
         # Retrieve from FACULTY database
-        retriever = get_retriever(k=3, db_type="faculty")
+        retriever = get_retriever(k=10, db_type="faculty")
         relevant_docs = retriever.invoke(user_project_idea)
         
         # Filter for faculty_db documents
@@ -31,8 +31,8 @@ def advisor_node(state):
     except Exception as e:
         print(f"   ⚠️ Retrieval failed: {e}")
 
-    # 2. Bind Tools (Enable NCKU Search for missing emails/lab names)
-    tools = get_all_tools()
+    # 2. Bind Tools (RESTRICTED to only ncku_faculty_search)
+    tools = [ncku_faculty_search] # <--- Pass specific tool list
     llm_with_tools = llm.bind_tools(tools)
 
     # 3. Construct Prompt (Clean Format + Strict JSON Rules)

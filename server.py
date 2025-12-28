@@ -13,7 +13,7 @@ from pydantic import BaseModel
 # --- INTERNAL IMPORTS ---
 from src.graph import build_graph
 from src.utils.pdf_loader import load_pdf_content
-from src.utils.vector_store import index_document, index_professors_to_chroma
+from src.utils.vector_store import index_document, index_professors_to_chroma, clear_database
 from src.utils.scrape_professor import scrape_ncku_professors
 
 # Load Environment
@@ -21,6 +21,7 @@ load_dotenv()
 
 # Global Agent Variable
 agent_app = None
+CHROMA_DB_PATH = "chroma_db_user"  # <--- Verify this matches your vector store path
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -101,9 +102,10 @@ async def delete_file():
         if os.path.exists("uploads"):
             shutil.rmtree("uploads")
             print("🗑️ Deleted 'uploads' directory (User Context Cleanup).")
-        
+
         # Recreate empty folder
         os.makedirs("uploads", exist_ok=True)
+        success = clear_database()
         
         return {"status": "success", "message": "User context cleared."}
     except Exception as e:

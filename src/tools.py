@@ -160,5 +160,4 @@ def get_all_tools():
         google_search,    # Now uses SerpAPI
         scrape_website,
         deep_research,    # Now uses SerpAPI
-        ncku_faculty_search
     ]

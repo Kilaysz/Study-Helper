@@ -2,36 +2,42 @@
 
 **An intelligent, multi-agent AI companion for studying, research, and academic advisor discovery.**
 
-This project is a **Full-Stack Agentic AI System** built with **LangGraph**, **FastAPI**, and **Ollama (Local LLMs)**.  
-It goes beyond traditional RAG by utilizing **task-specialized agents** that can tutor, quiz, research, and match your research ideas to real professors at **NCKU CSIE** using a dedicated vector database.
+This project is a **Full-Stack Agentic AI System** built with **LangGraph**, **FastAPI**, and **Ollama (Local LLMs)**.
+
+Unlike standard RAG pipelines that treat every request the same, this system uses a **specialized multi-agent architecture**. It intelligently routes tasks—using **Vector Search** for specific questions but **Raw Document Processing** for comprehensive summaries and quizzes—ensuring higher quality outputs than standard chatbots.
 
 ---
 
 ## ✨ Key Features
 
 ### 🧠 Intelligent Study Tools
-- **Feynman Simplifier**  
-  Explains complex concepts using simple language and analogies.  
-  *Example: “Explain Transformers like I’m 5.”*
+- **Feynman Simplifier (Concept Tutor)**
+  - **Logic:** Uses retrieval to find complex definitions, then rewrites them using simple analogies.
+  - *Example:* “Explain the Backpropagation algorithm like I’m 5.”
 
-- **Document Q&A (RAG)**  
-  Chat with your lecture slides, papers, or notes (PDF).
+- **Deep Research Agent**
+  - **Logic:** Combines **Google Search (SerpAPI)** with **Web Scraping** to fetch up-to-date information not found in your PDFs.
+  - *Example:* "Find the latest benchmarks for YOLOv8 and summarize them."
 
-- **Auto Quiz Generator**  
-  Generates quizzes from uploaded PDFs and grades your answers automatically.
+- **Academic Resource Finder**
+  - **Logic:** Directly queries **Arxiv** and **Wikipedia** to find peer-reviewed papers and definitions.
+  - *Example:* "Find recent papers on LLM hallucination rates."
 
-- **Deep Research Mode**  
-  Falls back to web search (Google / Tavily) when information is not found in documents.
+- **Computational Engine**
+  - **Logic:** Uses **Wolfram Alpha** and a **Python REPL** to solve complex math problems or execute code snippets.
+  - *Example:* "Calculate the integral of x^2 + 5x or run this Python script."
+
+- **Context-Aware Q&A (RAG)**
+  - **Logic:** Performs semantic search over your uploaded PDFs to answer specific questions with citation-like accuracy.
+  - *Example:* “What is the formula for loss function on page 12?”
 
 ### 🏫 Academic Advisor Matcher (NCKU CSIE)
-- **Supervisor Discovery**  
-  Describe your research idea and get matched with the most relevant professor.
-
-- **Permanent Faculty Knowledge Base**  
-  Uses a dedicated vector database built from scraped NCKU CSIE faculty data.
-
-- **Email Drafting Agent**  
-  Automatically generates professional emails to contact the recommended advisor.
+- **Supervisor Discovery Engine**
+  - Matches your research interests to NCKU CSIE professors using a **specialized faculty vector database**.
+- **Smart Verification Tool**
+  - Uses a custom **NCKU Search Tool** (`site:csie.ncku.edu.tw`) to find the latest lab websites and contact emails if they are missing from the database.
+- **Outreach Agent**
+  - Drafts a highly personalized, professional cold email citing specific alignment between your idea and their lab's work.
 
 ---
 
@@ -39,41 +45,42 @@ It goes beyond traditional RAG by utilizing **task-specialized agents** that can
 
 ### 🧩 Agentic Design with LangGraph
 
-The system uses **LangGraph** to orchestrate multiple specialized agents. An **intent classifier** routes user requests to the appropriate agent:
+The system utilizes a **Router-Based Workflow**. A central **Intent Classifier** analyzes the user's prompt and directs it to the most suitable specialized agent.
 
-| Agent | Responsibility | Example Use Case |
-|-------|----------------|----------------|
-| **Tutor Agent** | Explains and simplifies complex concepts using analogies or plain language | “Explain Transformers like I’m 5.” |
-| **Quiz Agent** | Generates quizzes from uploaded PDFs, collects answers, and automatically grades them | “Give me a quiz on this lecture slide.” |
-| **Advisor Agent** | Matches your research ideas to relevant NCKU CSIE professors and drafts contact emails | “I want to do a project on blockchain for supply chains. Who should I work with?” |
-| **Query Agent (RAG)** | Answers questions from user-uploaded documents or lecture notes | “What is the main formula on page 5 of this PDF?” |
-| **Summarizer Agent** | Summarizes PDFs or lecture slides into concise notes | “Summarize this document in 3 key points.” |
-| **Feynman Simplifier Node** | Uses the Feynman technique to explain any topic in simple terms | “Explain Recurrent Neural Networks like I’m 5.” |
 
-> The **intent classifier** detects the user’s request type (study, quiz, research, or advisor matching) and routes it to the proper agent.  
-> Each agent accesses either the **user ephemeral vector store** (`chroma_db_user`) or the **permanent faculty vector store** (`chroma_db_faculty`) depending on the task.
 
----
+| Agent Node | Technology | Best For... |
+| :--- | :--- | :--- |
+| **Advisor Agent** | **RAG (Faculty DB)** + **NCKU Search** | Finding supervisors & drafting emails. |
+| **Research Agent** | **SerpAPI** + **Arxiv** + **Scraper** | Finding external information on the web. |
+| **Math Agent** | **Wolfram Alpha** + **Python REPL** | Solving math equations and coding tasks. |
+| **Query Agent** | **RAG (User DB)** | Answering specific questions about a file. |
+| **Summarizer Agent** | **Full-Text Processing** | Creating comprehensive notes (bypasses Vector DB). |
 
-### 🧠 Dual-Memory Vector System
+### 🧠 Dual-Collection Memory System
 
-| Memory Type | Purpose | Persistence |
-|------------|---------|-------------|
-| `chroma_db_user` | User-uploaded PDFs | ❌ Ephemeral |
-| `chroma_db_faculty` | NCKU faculty data | ✅ Permanent |
+To balance **User Privacy** with **System Knowledge**, the application maintains two distinct vector memory streams within a single ChromaDB instance:
 
-- **User data** is wiped when switching chats to ensure privacy.
-- **Faculty database** is built once and reused indefinitely.
+| Memory Scope | Collection Name | Persistence | Function |
+| :--- | :--- | :--- | :--- |
+| **User Memory** | `user_context` | ❌ **Ephemeral** | Stores uploaded PDFs. Wiped automatically when you switch sessions or delete files. |
+| **Faculty Memory** | `ncku_faculty` | ✅ **Permanent** | Stores scraped professor profiles, lab details, and research areas. Persists across restarts. |
 
 ---
 
 ## 🛠️ Tech Stack
 
-- **Backend:** Python, FastAPI, LangChain, LangGraph  
-- **LLMs & Embeddings:** Ollama (Llama3 / Mistral / Gemma), `nomic-embed-text`  
-- **Frontend:** React, Tailwind CSS, Lucide Icons  
-- **Vector Database:** ChromaDB (Local)  
-- **Tools:** SerpAPI / Tavily (Web Search), BeautifulSoup (Scraping)
+- **Backend:** Python, FastAPI, LangChain, LangGraph
+- **LLMs & Embeddings:** Ollama (Llama 3 / Mistral), `nomic-embed-text`
+- **Frontend:** React, Tailwind CSS, Lucide Icons
+- **Vector Database:** ChromaDB (Local file-based storage)
+- **External Tools:**
+  - **SerpAPI / Tavily:** Live Web Search & Google Results.
+  - **Arxiv API:** Scientific paper search.
+  - **Wolfram Alpha:** Computational intelligence & math.
+  - **Wikipedia API:** General knowledge definitions.
+  - **Python REPL:** Dynamic code execution.
+  - **BeautifulSoup:** Web scraping & text extraction.
 
 ---
 
@@ -111,6 +118,8 @@ Create a .env file in the project root:
 SERPAPI_API_KEY=your_serpapi_key_here
 TAVILY_API_KEY=your_tavily_key_here
 OLLAMA_LOCAL_URL=http://localhost:11434
+OLLAMA_API_KEY="your_OLLAMA_key_here"
+WOLFRAM_ALPHA_APPID="your_wolfram_alpha_app_id"
 ```
 
 ## 3. Start Server
@@ -216,6 +225,7 @@ Answer the questions and get instant feedback.
     ├── graph.py              # LangGraph workflow & edge definitions
     ├── state.py              # AgentState schema definition
     ├── tools.py              # External tool definitions
+    ├── tools_advisor.py      # External tool for advisor recommendation
     ├── nodes/                # Agent Logic Nodes
     │   ├── classifier.py     # Intent classification node
     │   ├── query.py          # RAG & Q/A node

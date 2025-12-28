@@ -6,20 +6,7 @@ def quiz_node(state):
     llm = get_llm()
     user_input = state["messages"][-1].content
     
-    # --- 1. RAG Retrieval ---
-    print("🔍 Retrieving relevant context for quiz...")
-    try:
-        retriever = get_retriever(k=15, db_type="user") 
-        relevant_docs = retriever.invoke(user_input)
-        context_text = "\n\n".join([doc.page_content for doc in relevant_docs])
-    except Exception as e:
-        print(f"⚠️ Retrieval failed: {e}")
-        context_text = ""
-    
-    # Fallback to raw file if retrieval returns nothing
-    if not context_text:
-        print("⚠️ Context empty, using raw fallback.")
-        context_text = state.get("file_content", "")[:5000]
+    context_text = state.get("file_content", "")[:15000]
 
     prompt = f"""
     You are a Professor creating a quiz.

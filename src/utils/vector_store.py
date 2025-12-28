@@ -1,8 +1,6 @@
 import os
 import json
 import shutil
-from typing import List, Optional
-
 from langchain_chroma import Chroma
 from langchain_ollama import OllamaEmbeddings
 from langchain_text_splitters import (
@@ -18,40 +16,120 @@ DB_PATH_FACULTY = "./chroma_db_faculty" # 🔒 Permanent (Professors)
 OLLAMA_URL = os.getenv("OLLAMA_LOCAL_URL", "http://localhost:11434")
 EMBED_MODEL = "nomic-embed-text"
 
+# --- SINGLETON STORAGE ---
+# We store instances here: {'user': ChromaObj, 'faculty': ChromaObj}
+# This prevents opening multiple connections to the same folder (WinError 32 fix)
+_active_dbs = {} 
+
 def get_embeddings():
     return OllamaEmbeddings(
         model=EMBED_MODEL,
         base_url=OLLAMA_URL
     )
 
-# --- HELPER: Get Specific DB ---
 def get_vector_store(db_type: str):
     """
-    Returns the requested Vector Store instance.
+    The Single Source of Truth for DB connections.
     db_type: "user" or "faculty"
     """
-    path = DB_PATH_USER if db_type == "user" else DB_PATH_FACULTY
-    return Chroma(
+    global _active_dbs
+    
+    # 1. Determine Path & Collection Name
+    if db_type == "user":
+        path = DB_PATH_USER
+        collection = "user_rag_collection"
+    elif db_type == "faculty":
+        path = DB_PATH_FACULTY
+        collection = "faculty_rag_collection"
+    else:
+        raise ValueError("Invalid db_type. Use 'user' or 'faculty'.")
+
+    # 2. Return existing instance if available (Singleton)
+    if db_type in _active_dbs:
+        return _active_dbs[db_type]
+
+    # 3. Create new ONLY if missing
+    print(f"🔌 Establishing connection to {db_type} ChromaDB...")
+    instance = Chroma(
         persist_directory=path,
-        embedding_function=get_embeddings()
+        embedding_function=get_embeddings(),
+        collection_name=collection
     )
+    
+    _active_dbs[db_type] = instance
+    return instance
 
 # ==========================================
-# 1. PROFESSOR INDEXING (Permanent DB)
+# 1. USER DB MANAGEMENT (Ephemeral)
+# ==========================================
+
+def clear_database():
+    """
+    Clears the User DB by deleting content, NOT the folder.
+    This is safe for Windows file locks.
+    """
+    try:
+        # Use the singleton getter
+        db = get_vector_store("user")
+        
+        # Get all IDs currently in the DB
+        existing_data = db.get()
+        ids_to_delete = existing_data['ids']
+        
+        if ids_to_delete:
+            print(f"🗑️ Deleting {len(ids_to_delete)} existing user documents...")
+            db.delete(ids_to_delete)
+            print("✅ User Database content wiped.")
+        else:
+            print("ℹ️ User Database was already empty.")
+            
+        return True
+    except Exception as e:
+        print(f"❌ Error clearing database: {e}")
+        return False
+
+def index_document(text: str, filename: str):
+    """
+    1. Wipes old User DB content (Safely).
+    2. Indexes new file content.
+    """
+    # Step 1: Clear old data safely
+    clear_database()
+
+    # Step 2: Prepare new chunks
+    print(f"📊 Indexing new file: {filename}")
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=1000, chunk_overlap=100, add_start_index=True
+    )
+    chunks = splitter.create_documents(
+        [text], metadatas=[{"source": filename}]
+    )
+
+    # Step 3: Add to DB (using Singleton)
+    db = get_vector_store("user")
+    db.add_documents(chunks)
+    print("✅ User document indexed successfully.")
+
+# ==========================================
+# 2. FACULTY DB MANAGEMENT (Permanent)
 # ==========================================
 
 def index_professors_to_chroma():
     """
-    Indexes professors into the DEDICATED Faculty DB.
+    Indexes professors into the Faculty DB if it's empty.
     """
     json_path = "data/professors.json"
     if not os.path.exists(json_path):
         print("⚠️ No professors.json found. Skipping.")
         return
 
-    # Check if Faculty DB already exists (to avoid re-indexing)
-    if os.path.exists(DB_PATH_FACULTY) and os.listdir(DB_PATH_FACULTY):
-        print("✅ Faculty Database already exists. Skipping re-index.")
+    # Use Singleton to check existence
+    db = get_vector_store("faculty")
+    existing = db.get()
+    
+    # If we have IDs, the DB is already built. Skip.
+    if existing['ids']:
+        print("✅ Faculty Database already populated. Skipping re-index.")
         return
 
     print("📊 Building Faculty Database...")
@@ -78,76 +156,21 @@ def index_professors_to_chroma():
             ))
 
     if docs:
-        # Save to FACULTY path
-        vector_store = Chroma(
-            persist_directory=DB_PATH_FACULTY,
-            embedding_function=get_embeddings()
-        )
-        # Batch add
+        print(f"📥 Adding {len(docs)} faculty chunks...")
+        # Add in batches to be safe
         batch_size = 50
         for i in range(0, len(docs), batch_size):
-            vector_store.add_documents(docs[i:i + batch_size])
+            db.add_documents(docs[i:i + batch_size])
         
-        print(f"✅ Indexed {len(docs)} faculty chunks to {DB_PATH_FACULTY}")
+        print(f"✅ Indexed all faculty to {DB_PATH_FACULTY}")
 
 # ==========================================
-# 2. USER FILE INDEXING (Ephemeral DB)
-# ==========================================
-
-def index_document(text: str, filename: str):
-    """
-    Wipes the User DB and creates a fresh one for the new file.
-    """
-    print(f"🧹 Wiping old user database at {DB_PATH_USER}...")
-    
-    # HARD DELETE: Remove the folder entirely to ensure it's empty
-    if os.path.exists(DB_PATH_USER):
-        shutil.rmtree(DB_PATH_USER)
-    
-    # Re-create empty
-    os.makedirs(DB_PATH_USER, exist_ok=True)
-
-    print(f"📊 Indexing new file: {filename}")
-    
-    splitter = RecursiveCharacterTextSplitter(
-        chunk_size=1000, chunk_overlap=100, add_start_index=True
-    )
-    
-    chunks = splitter.create_documents(
-        [text], metadatas=[{"source": filename}]
-    )
-
-    # Save to USER path
-    vector_store = Chroma(
-        persist_directory=DB_PATH_USER,
-        embedding_function=get_embeddings()
-    )
-    vector_store.add_documents(chunks)
-    print("✅ User document indexed successfully.")
-
-# ==========================================
-# 3. RETRIEVING (Targeted)
+# 3. RETRIEVER ACCESS
 # ==========================================
 
 def get_retriever(k: int = 5, db_type: str = "user"):
     """
-    Get a retriever for a SPECIFIC database.
-    db_type: 'user' (default) or 'faculty'
+    Returns retriever from the cached Singleton instance.
     """
-    path = DB_PATH_FACULTY if db_type == "faculty" else DB_PATH_USER
-    
-    # Check if DB exists before trying to load it
-    if not os.path.exists(path) or not os.listdir(path):
-        # Return an empty retriever or handle gracefully if DB is missing
-        # We create a dummy empty store just to avoid crashing
-        return Chroma(
-            persist_directory=path, 
-            embedding_function=get_embeddings()
-        ).as_retriever(search_kwargs={"k": 1})
-
-    vector_store = Chroma(
-        persist_directory=path,
-        embedding_function=get_embeddings()
-    )
-    
-    return vector_store.as_retriever(search_kwargs={"k": k})
+    db = get_vector_store(db_type)
+    return db.as_retriever(search_kwargs={"k": k})

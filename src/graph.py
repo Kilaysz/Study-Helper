@@ -3,6 +3,7 @@ from langgraph.prebuilt import ToolNode, tools_condition
 
 from src.state import AgentState
 from src.tools import get_all_tools
+from src.tools_advisor import get_advisor_tool
 
 # Node Imports
 from src.nodes.classifier import message_classifier_node
@@ -19,9 +20,10 @@ def build_graph():
     # --- 1. Initialize Tool Node ---
     # This node will execute the tools (Tavily, Arxiv, etc.)
     tools = get_all_tools()
+    advisor_tool = get_advisor_tool()
     tool_node_query = ToolNode(tools)
     tool_node_simplify = ToolNode(tools)
-    tool_node_advisor = ToolNode(tools)
+    tool_node_advisor = ToolNode(advisor_tool)
 
     # --- 2. Add All Nodes ---
     workflow.add_node("classifier", message_classifier_node) 

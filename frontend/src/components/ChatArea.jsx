@@ -39,81 +39,61 @@ export default function ChatArea({
                 : 'bg-white/95 backdrop-blur-sm border border-gray-200/50 text-gray-800 rounded-tl-md'}
             `}>
               {msg.role === 'assistant' ? (
+                // Markdown content for Assistant
                 <div className="prose prose-sm max-w-none text-gray-800 
                   prose-p:leading-relaxed prose-p:my-2
                   prose-headings:text-gray-900 prose-headings:font-semibold prose-headings:mb-3 prose-headings:mt-4
-                  prose-pre:bg-gray-100 prose-pre:text-gray-800 prose-pre:rounded-xl prose-pre:shadow-inner prose-pre:p-4
-                  prose-code:text-blue-600 prose-code:bg-blue-50 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-xs
-                  prose-table:border-collapse prose-table:w-full prose-table:my-4
-                  prose-thead:bg-gradient-to-br prose-thead:from-gray-100 prose-thead:to-gray-200
-                  prose-th:p-3 prose-th:border prose-th:border-gray-300 prose-th:font-bold prose-th:text-left prose-th:text-gray-900
-                  prose-td:p-3 prose-td:border prose-td:border-gray-200 prose-td:align-top prose-td:whitespace-normal
-                  prose-tbody:bg-white
-                  prose-tr:border-b prose-tr:border-gray-200
-                  prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline
-                  prose-strong:text-gray-900 prose-strong:font-bold
+                  prose-pre:bg-gray-100 prose-pre:text-gray-800 prose-pre:rounded-xl prose-pre:shadow-inner prose-pre:p-4 prose-pre:overflow-x-auto
+                  prose-code:text-blue-600 prose-code:bg-blue-50 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-xs prose-code:font-mono
+                  prose-table:border-collapse prose-table:w-full prose-table:my-4 prose-table:table-fixed
+                  prose-thead:bg-gray-100
+                  prose-th:p-3 prose-th:border prose-th:border-gray-300 prose-th:font-bold prose-th:text-left
+                  prose-td:p-3 prose-td:border prose-td:border-gray-200 prose-td:align-top
                   prose-ul:my-2 prose-ul:list-disc prose-ul:pl-6
                   prose-ol:my-2 prose-ol:list-decimal prose-ol:pl-6
                   prose-li:my-1 prose-li:leading-relaxed
-                  prose-blockquote:border-l-4 prose-blockquote:border-blue-500 prose-blockquote:pl-4 prose-blockquote:italic">
+                  prose-blockquote:border-l-4 prose-blockquote:border-blue-500 prose-blockquote:pl-4 prose-blockquote:italic prose-blockquote:text-gray-600"
+                >
                   <ReactMarkdown 
                     remarkPlugins={[remarkGfm]}
                     components={{
+                      // Custom Table components to ensure styling and scrolling
                       table: ({node, ...props}) => (
-                        <div className="overflow-x-auto my-4 rounded-lg border border-gray-300">
-                          <table className="min-w-full border-collapse" {...props} />
+                        <div className="overflow-x-auto my-4 rounded-lg border border-gray-200 shadow-sm">
+                          <table className="min-w-full divide-y divide-gray-300" {...props} />
                         </div>
                       ),
                       thead: ({node, ...props}) => (
-                        <thead className="bg-gradient-to-br from-gray-100 to-gray-200" {...props} />
+                        <thead className="bg-gray-50" {...props} />
                       ),
                       tbody: ({node, ...props}) => (
-                        <tbody className="bg-white divide-y divide-gray-200" {...props} />
+                        <tbody className="divide-y divide-gray-200 bg-white" {...props} />
                       ),
                       tr: ({node, ...props}) => (
-                        <tr className="hover:bg-gray-50 transition-colors" {...props} />
+                        <tr className="hover:bg-gray-50/50 transition-colors" {...props} />
                       ),
                       th: ({node, ...props}) => (
-                        <th className="p-4 border-r border-gray-300 font-bold text-left text-gray-900 last:border-r-0 whitespace-nowrap" {...props} />
+                        <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900" {...props} />
                       ),
-                      td: ({node, children, ...props}) => (
-                        <td className="p-4 border-r border-gray-200 align-top last:border-r-0" {...props}>
-                          <div className="whitespace-pre-wrap break-words">{children}</div>
-                        </td>
+                      td: ({node, ...props}) => (
+                        <td className="whitespace-pre-wrap px-3 py-4 text-sm text-gray-500" {...props} />
                       ),
-                      ul: ({node, ...props}) => (
-                        <ul className="list-disc pl-5 my-2 space-y-1" {...props} />
-                      ),
-                      li: ({node, ...props}) => (
-                        <li className="text-sm leading-relaxed" {...props} />
-                      ),
-                      p: ({node, children, ...props}) => (
-                        <div className="my-1" {...props}>{children}</div>
-                      ),
-                      br: () => <br />
+                      a: ({node, ...props}) => (
+                        <a 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className="text-blue-600 hover:underline font-medium transition-colors" 
+                          {...props} 
+                        />
+                      )
                     }}
                   >
-                    {(() => {
-                      let content = msg.content;
-                      
-                      // Replace HTML br tags with markdown line breaks
-                      content = content.replace(/<br\s*\/?>/gi, '  \n');
-                      
-                      // Fix orphaned bullet points that appear on their own row
-                      // Pattern: | cell | cell | cell |\n| • content |
-                      // Convert to: | cell | cell | cell • content |
-                      content = content.replace(/\|([^|\n]+)\|([^|\n]+)\|([^|\n]+)\|\s*\n\s*\|\s*([•\-\*][^\|]*?)\s*\|/g, 
-                        '| $1 | $2 | $3 $4 |');
-                      
-                      // Also handle cases where bullet points come right after cell content
-                      content = content.replace(/\|\s*([^|\n]+?)\s*\n+\s*([•\-\*])/g, '| $1 $2');
-                      
-                      return content;
-                    })()}
+                    {msg.content}
                   </ReactMarkdown>
                 </div>
               ) : (
-                <div className="whitespace-pre-wrap">{msg.content}</div>
+                // Plain text for User
+                <div className="whitespace-pre-wrap font-medium">{msg.content}</div>
               )}
             </div>
 
