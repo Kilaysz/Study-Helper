@@ -132,46 +132,62 @@ Access the app at:
 ```
 
 ### 📖 How to Use
-## Mode 1: Study & Summarize
-Upload a PDF (slides, papers, notes)
+## Mode 1: Study Agent (Interactive RAG)
+Best for finding specific details, formulas, or facts within a document.
+Upload a PDF (slides, papers, notes).
 Ask:
+
 ```bash
-“Summarize this document”
 “What is the main formula on page 5?”
+“Where does this paper mention data augmentation?”
 ```
 
-## Mode 2: Feynman Technique
+## Mode 2: Summarizer Agent
+Best for getting a high-level overview or study notes.
+Upload a PDF.
+
 Ask:
 
-```bash 
-Explain Recurrent Neural Networks like I’m 5.
-```
-
-## Mode 3: Advisor Matcher
-No upload required.
-Ask:
 ```bash
-I want to do a project on blockchain for supply chains.
-Who should I work with?
-✔ Finds the best matching professor
+“Summarize this document.”
+“Give me the top 5 key takeaways from these slides.”
+```
+
+## Mode 3: Feynman Simplifier
+Best for understanding difficult concepts.
+Ask (No upload needed, but works with context too):
+
+```bash
+“Explain Recurrent Neural Networks like I’m 5.”
+```
+
+## Mode 4: Advisor Matcher
+Best for finding research supervisors.
+Ask (No upload required):
+
+
+```bash
+“I want to do a project on blockchain for supply chains. Who should I work with?”
+```
+Result: ✔ Finds the best matching professor
+
 ✔ Drafts a professional contact email
-✔ Verifies missing info via web search if needed
-```
 
-## Mode 4: Quiz Mode
-Upload a PDF
+✔ Verifies missing info via web search if needed
+
+
+## Mode 5: Quiz Mode
+Best for self-testing.
+
+Upload a PDF.
 
 Ask:
+
+
 ```bash
-Give me a quiz on this document.
+“Give me a quiz on this document.”
 ```
-```bash
-Answer:
-1. A
-2. C
-3. B
-```
-Get instant grading & feedback after answering
+Answer the questions and get instant feedback.
 ### 📂 Project Structure
 ```bash
 ├── uv.lock
