@@ -1,140 +1,241 @@
-🎓 AI Study Partner Agent
+# 🎓 AI Study Partner & Advisor Matcher
 
-A Full-Stack AI Application built with LangGraph, FastAPI, and React that acts as an intelligent study assistant. It supports multi-modal interactions including RAG-based quizzes, document summarization, and web-grounded research.
+**An intelligent AI companion for studying, research, and academic advisor discovery.**
 
-✨ Features
+This project is a **Full-Stack Agentic AI System** built with **LangGraph**, **FastAPI**, and **Ollama (Local LLMs)**.  
+It goes beyond traditional RAG by using **task-specialized agents** that can tutor, quiz, research, and even **match your research idea to real professors at NCKU CSIE** using a dedicated vector database.
 
-🧠 Intelligent Routing: Automatically classifies user intent to switch between modes (Summary, Quiz, Query, Simplify).
+---
 
-📚 RAG (Retrieval Augmented Generation): Upload PDFs to chat with your documents using Vector Search (ChromaDB).
+## ✨ Key Features
 
-⚡ Web Search: Integrated with Tavily/DuckDuckGo for real-time internet research.
+### 🧠 Intelligent Study Tools
+- **Feynman Simplifier**  
+  Explains complex concepts using simple language and analogies  
+  _Example: “Explain Transformers like I’m 5.”_
 
-📝 Interactive Quizzes: Generates questions from your notes and grades your answers instantly.
+- **Document Q&A (RAG)**  
+  Chat with your lecture slides, papers, or notes (PDF).
 
-💡 Feynman Simplifier: Explains complex topics using simple analogies.
+- **Auto Quiz Generator**  
+  Generates quizzes from uploaded PDFs and grades your answers automatically.
 
-💬 Multi-Session Chat: Save and manage multiple conversation histories via a Gemini-style sidebar.
+- **Deep Research Mode**  
+  Falls back to web search (Google / Tavily) when information is not found in documents.
 
-🏗️ Architecture
+---
 
-This project follows a Client-Server architecture with an Agentic backend.
+### 🏫 Academic Advisor Matcher (NCKU CSIE)
+- **Supervisor Discovery**  
+  Describe your research idea and get matched with the most relevant professor.
 
-Frontend: React (Vite) + Tailwind CSS
+- **Permanent Faculty Knowledge Base**  
+  Uses a dedicated vector database built from scraped NCKU CSIE faculty data.
 
-Backend: FastAPI (Python)
+- **Email Drafting Agent**  
+  Automatically generates a professional email to contact the recommended advisor.
 
-Agent Orchestration: LangGraph (Stateful Multi-Actor Graph)
+---
 
-LLM Provider: Ollama (Local) or API Gateway
+## ⚡ System Architecture
 
-Vector DB: ChromaDB (In-memory/Persisted)
+### 🧩 Agentic Design with LangGraph
+An intent classifier routes user requests to specialized agents:
 
-Directory Structure
+- **Tutor Agent** → explanation & simplification  
+- **Quiz Agent** → quiz creation & grading  
+- **Advisor Agent** → supervisor matching  
+- **Query Agent** → document Q&A (RAG)
 
-study-partner-agent/
-├── server.py               # FastAPI Entry Point
-├── frontend/               # React Application
-└── src/                    # AI Logic
-    ├── graph.py            # LangGraph Wiring
-    ├── nodes/              # Individual Agents (Quiz, Query, Summarize...)
-    └── utils/              # PDF Loader, Vector Store, LLM Setup
+---
 
+### 🧠 Dual-Memory Vector System
 
-🚀 Getting Started
+| Memory Type | Purpose | Persistence |
+|------------|--------|------------|
+| `chroma_db_user` | User-uploaded PDFs | ❌ Ephemeral |
+| `chroma_db_faculty` | NCKU faculty data | ✅ Permanent |
 
-Prerequisites
+- User data is **wiped when switching chats** → privacy-safe  
+- Faculty database is **built once and reused forever**
 
-Python 3.10+ (Recommend using uv for package management)
+---
 
-Node.js 18+
+## 🛠️ Tech Stack
 
-Ollama installed and running (ollama serve)
+**Backend**
+- Python
+- FastAPI
+- LangChain
+- LangGraph
 
-1. Backend Setup
+**LLMs & Embeddings**
+- Ollama (Llama3 / Mistral / Gemma)
+- nomic-embed-text
 
-Clone the repository:
+**Frontend**
+- React
+- Tailwind CSS
+- Lucide Icons
 
-git clone [https://github.com/yourusername/study-partner-agent.git](https://github.com/yourusername/study-partner-agent.git)
-cd study-partner-agent
+**Vector Database**
+- ChromaDB (Local)
 
+**Tools**
+- SerpAPI / Tavily (Web Search)
+- BeautifulSoup (Scraping)
 
-Install Python dependencies:
+---
 
-# Using uv (Recommended)
-uv add fastapi uvicorn langchain langgraph langchain-community langchain-chroma pymupdf4llm python-multipart python-dotenv
+## 🚀 Getting Started
 
-# OR using pip
+### Prerequisites
+- Python **3.10+**
+- Node.js & npm
+- **Ollama** running locally
+
+```bash
+ollama serve
+ollama pull nomic-embed-text
+ollama pull llama3
+🔧 Backend Setup
+bash
+Copy code
+git clone https://github.com/yourusername/study-partner.git
+cd study-partner
+
+python -m venv .venv
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
+
 pip install -r requirements.txt
+Environment Variables
+Create a .env file in the project root:
 
+env
+Copy code
+SERPAPI_API_KEY=your_serpapi_key_here
+TAVILY_API_KEY=your_tavily_key_here
+OLLAMA_LOCAL_URL=http://localhost:11434
+Start Backend Server
+bash
+Copy code
+python server.py
+⚠️ On first run, the server will automatically scrape the NCKU CSIE faculty website and build the professor vector database.
 
-Configure Environment Variables:
-Create a .env file in the root directory:
-
-# LLM Settings
-OLLAMA_BASE_URL="http://localhost:11434"
-OLLAMA_MODEL="llama3"
-
-# Optional API Keys
-TAVILY_API_KEY="tvly-..."
-
-
-Start the Backend Server:
-
-uv run python server.py
-
-
-Server will run at http://localhost:8000
-
-2. Frontend Setup
-
-Navigate to the frontend folder:
-
+🎨 Frontend Setup
+bash
+Copy code
 cd frontend
-
-
-Install Node dependencies:
-
 npm install
-
-
-Start the React Dev Server:
-
 npm run dev
+Access the app at:
+👉 http://localhost:5173
 
+📖 How to Use
+Mode 1: Study & Summarize
+Upload a PDF (slides, papers, notes)
 
-App will run at http://localhost:5173
+Ask:
 
-💡 Usage Guide
+“Summarize this document”
 
-Upload: Click the "Upload PDF" area in the sidebar to load your lecture notes or papers.
+“What is the main formula on page 5?”
 
-Auto-Detect: Just ask a question!
+Mode 2: Feynman Technique
+Ask:
 
-"Summarize this file" -> Triggers Summarizer Agent.
+text
+Copy code
+Explain Recurrent Neural Networks like I’m 5.
+Mode 3: Advisor Matcher
+No upload required.
 
-"Test me on Chapter 3" -> Triggers Quiz Agent.
+Ask:
 
-"Explain Quantum Physics like I'm 5" -> Triggers Simplifier Agent.
+text
+Copy code
+I want to do a project on blockchain for supply chains.
+Who should I work with?
+✔ Finds the best matching professor
+✔ Drafts a professional contact email
+✔ Verifies missing info via web search if needed
 
-"Who won the 2024 World Cup?" -> Triggers Web Search Agent.
+Mode 4: Quiz Mode
+Upload a PDF
 
-Quiz Mode: When in a quiz, answer the question. The agent will automatically grade you and offer another question.
+Ask:
 
-🛠️ Tech Stack Details
+text
+Copy code
+Give me a quiz on this document.
+Answer:
 
-LangGraph: Manages the cyclic workflow (e.g., Quiz -> Wait for User -> Grade -> Repeat).
+text
+Copy code
+1. A
+2. C
+3. B
+Get instant grading & feedback
 
-ChromaDB: Indexes PDF chunks for semantic retrieval during quizzes.
-
-PyMuPDF4LLM: Converts PDFs into clean Markdown for better LLM comprehension.
-
-Lucide React: Provides the modern icon set used in the UI.
+📂 Project Structure
+plaintext
+Copy code
+├── data/                   # Scraped professors.json (Permanent)
+├── uploads/                # Temporary user PDFs
+├── chroma_db_faculty/      # Faculty Vector DB (Permanent)
+├── chroma_db_user/         # User Vector DB (Ephemeral)
+├── frontend/               # React Frontend
+├── src/
+│   ├── graph.py            # LangGraph workflow
+│   ├── state.py            # Agent state schema
+│   ├── tools.py            # Web search & utilities
+│   ├── nodes/
+│   │   ├── advisor.py      # Supervisor matching logic
+│   │   ├── classifier.py   # Intent router
+│   │   ├── query.py        # RAG Q&A
+│   │   ├── simplifier.py   # Feynman explanations
+│   │   └── quiz.py
+│   └── utils/
+│       ├── vector_store.py # Dual-DB management
+│       └── pdf_loader.py   # PDF parsing
+├── scrape_professors.py    # Faculty scraper
+└── server.py               # FastAPI entry point
+🛡️ License
+Distributed under the MIT License.
+See LICENSE for details.
 
 🤝 Contributing
+Fork the repository
 
-Contributions are welcome! Please open an issue or submit a pull request for any bugs or feature enhancements.
+Create a feature branch
 
-📄 License
+bash
+Copy code
+git checkout -b feature/AmazingFeature
+Commit your changes
 
-This
+Push to your branch
+
+Open a Pull Request
+
+⭐ Acknowledgements
+LangChain & LangGraph
+
+Ollama
+
+ChromaDB
+
+NCKU CSIE Faculty
+
+yaml
+Copy code
+
+---
+
+If you want next:
+- 📊 **System architecture diagram**
+- 🧪 **Evaluation / benchmarking section**
+- 🎓 **Academic-style abstract**
+- 🌟 **GitHub badges & shields**
+
+Just tell me — this README is already **portfolio-grade** 💯
