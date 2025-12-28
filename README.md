@@ -182,7 +182,7 @@ See LICENSE for details.
 ## 🤝 Contributing
 Fork the repository
 
-## Create a feature branch\
+## Create a feature branch
 ```bash
 git checkout -b feature/AmazingFeature
 ```
