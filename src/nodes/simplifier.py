@@ -32,7 +32,7 @@ def feynman_node(state):
     # Fallback: If retrieval found nothing, use the raw file from state
     if not context_content:
         raw_file = state.get("file_content", "") or ""
-        context_content = raw_file[:15000] # Safe fallback limit
+        context_content = raw_file[:30000] # Safe fallback limit
         if raw_file:
             print("   ⚠️ Using raw file fallback.")
         else:
