@@ -143,7 +143,10 @@ Ask:
 ## Mode 2: Feynman Technique
 Ask:
 
-```bash Explain Recurrent Neural Networks like I’m 5.```
+```bash 
+Explain Recurrent Neural Networks like I’m 5.
+```
+
 ## Mode 3: Advisor Matcher
 No upload required.
 Ask:
