@@ -226,16 +226,3 @@ Ollama
 ChromaDB
 
 NCKU CSIE Faculty
-
-yaml
-Copy code
-
----
-
-If you want next:
-- 📊 **System architecture diagram**
-- 🧪 **Evaluation / benchmarking section**
-- 🎓 **Academic-style abstract**
-- 🌟 **GitHub badges & shields**
-
-Just tell me — this README is already **portfolio-grade** 💯
