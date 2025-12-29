@@ -16,13 +16,10 @@ def feynman_node(state):
     context_content = ""
     
     try:
-        # Retrieve top 10 chunks from USER UPLOADS only
-        retriever = get_retriever(k=15, db_type="user")
+        retriever = get_retriever(k=30, db_type="user")
         relevant_docs = retriever.invoke(user_input)
         
         if relevant_docs:
-            # FIX: Extract .page_content (String) instead of the whole object
-            # FIX: Removed redundant 'if' check (Retriever already handled filtering)
             context_content = "\n\n".join([doc.page_content for doc in relevant_docs])
             print(f"   ✅ Found {len(relevant_docs)} relevant chunks.")
             

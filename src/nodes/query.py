@@ -17,7 +17,7 @@ def query_node(state):
     
     context_content = ""
     try:
-        retriever = get_retriever(k=10, db_type="user")
+        retriever = get_retriever(k=30, db_type="user")
         relevant_docs = retriever.invoke(query)
         
         if relevant_docs:

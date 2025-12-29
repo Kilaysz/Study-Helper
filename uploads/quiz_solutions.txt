@@ -1,5 +1,0 @@
-1. A – The download link provided is “https://filezilla-project.org/download.php?type=client#close”.  
-2. B – Off‑campus users must first connect to the school VPN before accessing the FTP server.  
-3. A – FTP uses port 21 by default, which can be left as default in FileZilla.  
-4. D – “Encryption Type” is not listed among the required connection details.  
-5. B – Server files appear in the right‑hand pane after a successful Quickconnect.
