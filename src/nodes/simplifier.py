@@ -16,7 +16,7 @@ def feynman_node(state):
     context_content = ""
     
     try:
-        retriever = get_retriever(k=30, db_type="user")
+        retriever = get_retriever(k=1000, db_type="user")
         relevant_docs = retriever.invoke(user_input)
         
         if relevant_docs:
