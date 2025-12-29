@@ -19,24 +19,37 @@ def advisor_node(state):
     tools = get_advisor_tool()
     llm_with_tools = llm.bind_tools(tools)
 
-    # --- 3. Retrieval (RAG) ---
+    # --- 3. "Search All" Retrieval Strategy ---
     context_content = ""
     try:
-        # Keep k=10 for safety
-        retriever = get_retriever(k=50, db_type="faculty")
-        relevant_docs = retriever.invoke(user_input)
+        # STEP A: Retrieve EVERYONE (or a very high number)
+        # This ensures we scan the entire JSON list mathematically.
+        # 150 is safe for 'searching', but not for 'reading'.
+        retriever = get_retriever(k=150, db_type="faculty") 
+        all_matches = retriever.invoke(user_input)
         
-        if relevant_docs:
-            docs_text = []
-            for doc in relevant_docs:
-                name = doc.metadata.get("name", "Unknown")
-                profile_link = doc.metadata.get("profile_url", "N/A")
-                docs_text.append(f"NAME: {name}\nLINK: {profile_link}\nDATA: {doc.page_content}\n")
+        MAX_CHARS = 100000 
+        current_chars = 0
+        docs_text = []
+        
+        print(f"   📊 Scanning {len(all_matches)} total candidates...")
+        
+        for doc in all_matches:
+            name = doc.metadata.get("name", "Unknown")
+            profile_link = doc.metadata.get("profile_url", "N/A")
             
-            context_content = "\n".join(docs_text)
-            print(f"   ✅ Retrieved {len(relevant_docs)} candidates.")
-        else:
-            print("   ⚠️ No matching professors found.")
+            # Format this professor's entry
+            entry = f"NAME: {name}\nLINK: {profile_link}\nDATA: {doc.page_content}\n\n"
+            
+            # Check if adding this entry exceeds our safety limit
+            if current_chars + len(entry) > MAX_CHARS:
+                break # Stop adding, we are full!
+                
+            docs_text.append(entry)
+            current_chars += len(entry)
+            
+        context_content = "".join(docs_text)
+        print(f"   ✅ Selected top {len(docs_text)} matches (Context filled: {current_chars}/{MAX_CHARS} chars).")
             
     except Exception as e:
         print(f"   ⚠️ Retrieval failed: {e}")
@@ -45,19 +58,19 @@ def advisor_node(state):
     system_prompt = f"""
     You are an Expert Academic Advisor at NCKU CSIE.
     
-    ### CANDIDATE DATA (From Internal Database)
+    ### CANDIDATE DATA (Ranked by Relevance)
     {context_content}
     
     ### STUDENT REQUEST
     "{user_input}"
     
     ### INSTRUCTIONS
-    1. **Selection:** Pick the best matching professor from the list above.
+    1. **Selection:** The list above contains the most relevant professors from the entire department. Pick the **single best match** (ONLY FROM THE LIST).
     
     2. **Tool Usage Rules (STRICT):**
        - **DO NOT** use a tool named 'search'. It does not exist.
        - The ONLY valid tools are: `deep_research` and `ncku_faculty_search`.
-       - If you don't need a tool, just answer directly.
+       - **Usage:** Only use `ncku_faculty_search` if the 'DATA' field is missing the Lab Name or Email.
     
     3. **Output Format:**
     ## 🏆 Top Recommendation: [Professor Name]
@@ -85,11 +98,7 @@ def advisor_node(state):
         print(f"❌ Tool Call Error detected: {e}")
         print("   🔄 Retrying without tools to prevent crash...")
         
-        # Fallback: Force the LLM to just write text (no tools allowed)
-        # We append a system message telling it to stop trying to search.
-        fallback_msg = SystemMessage(content="Error: The search tool is unavailable. Please answer using ONLY the provided internal database context.")
+        fallback_msg = SystemMessage(content="Error: Tools unavailable. Answer using ONLY the provided database context.")
         messages.append(fallback_msg)
-        
-        # Invoke the standard LLM (unbound)
         response = llm.invoke(messages)
         return {"messages": [response]}

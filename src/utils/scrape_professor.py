@@ -3,7 +3,7 @@ from bs4 import BeautifulSoup
 import json
 import os
 import re
-from urllib.parse import urljoin # Helper to fix relative links
+from urllib.parse import urljoin
 
 # NCKU CSIE Faculty Page
 BASE_URL = "https://www.csie.ncku.edu.tw"
@@ -27,45 +27,60 @@ def scrape_ncku_professors():
         soup = BeautifulSoup(response.text, 'html.parser')
         professors = []
 
-        # Find all potential professor blocks
+        # Find all potential blocks
         potential_blocks = soup.find_all("div", class_=re.compile(r"(row|item|col|d-flex)"))
         seen_names = set()
 
         for block in potential_blocks:
             raw_text = block.get_text(separator=" ", strip=True)
             
-            # Basic validation: Must contain email symbol or '教授'
+            # --- 🛡️ FILTER 1: Must look like a person ---
             if "@" not in raw_text and "教授" not in raw_text:
                 continue
 
-            # --- 1. Extract Name & Link ---
-            # We look for the link specifically inside the name tag first
+            # --- 🛡️ FILTER 2: Ignore Department Office ---
+            if "em62500@email.ncku.edu.tw" in raw_text:
+                continue
+
+            # --- 🛡️ FILTER 3: Ignore Giant Containers (THE FIX) ---
+            # If the text is massive (holds multiple people), skip it.
+            # A normal profile is usually 200-400 chars.
+            if len(raw_text) > 800:
+                continue
+
+            # Extract Name
             name = "Unknown"
             profile_url = "N/A"
             
-            # Try finding a header with a link (Common pattern)
             header_link = block.find(["h4", "h3", "h5", "strong"])
             
             if header_link:
                 name = header_link.get_text(strip=True)
-                # Check if the header itself is a link or contains one
                 a_tag = header_link.find("a") if not header_link.name == 'a' else header_link
-                
-                # If not found in header, check the whole block for a link matching the name
                 if not a_tag:
                     a_tag = block.find("a", href=True)
-
                 if a_tag and a_tag.has_attr("href"):
-                    # Fix relative paths (e.g., "/members/10") -> full URL
                     profile_url = urljoin(BASE_URL, a_tag["href"])
             else:
                 name = " ".join(raw_text.split()[:3])
+
+            # --- 🛡️ FILTER 4: Ignore Junk Keywords ---
+            junk_keywords = ["台南市", "交通資訊", "系所簡介", "檔案下載", "National", "Cheng", "Kung", "師資", "Faculty"]
+            if any(k in name for k in junk_keywords):
+                continue
+            
+            if name[0].isdigit():
+                continue
+                
+            # Filter invalid header links
+            if profile_url.strip().endswith("/members/csie"):
+                continue
 
             # Deduplication
             if name in seen_names or len(name) > 30: continue
             seen_names.add(name)
 
-            # --- 2. Extract Details ---
+            # Extract Details
             email_match = re.search(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', raw_text)
             email = email_match.group(0) if email_match else "N/A"
 
@@ -77,7 +92,7 @@ def scrape_ncku_professors():
                     "name": name,
                     "email": email,
                     "lab": lab_name,
-                    "profile_url": profile_url, # <--- NEW FIELD
+                    "profile_url": profile_url,
                     "raw_info": raw_text
                 })
 
@@ -86,7 +101,7 @@ def scrape_ncku_professors():
         with open("data/professors.json", "w", encoding="utf-8") as f:
             json.dump(professors, f, ensure_ascii=False, indent=2)
         
-        print(f"✅ Saved {len(professors)} professors with links.")
+        print(f"✅ Saved {len(professors)} professors (Cleaned container issues).")
         return professors
 
     except Exception as e:
