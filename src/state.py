@@ -6,4 +6,5 @@ class AgentState(TypedDict):
     messages : Annotated[List[BaseMessage], add_messages]
     file_content : Optional[str] # file PDF if loaded
     mode: Optional[str] # mode determined by classifer
+    chunk_count: int
     quiz_answers: Optional[str]

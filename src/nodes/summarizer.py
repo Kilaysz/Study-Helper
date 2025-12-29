@@ -9,7 +9,7 @@ def summarizer_node(state):
     llm = get_llm()
     user_query = state["messages"][-1].content
     
-    context_content = state.get("file_content", "")[:50000]
+    context_content = state.get("file_content", "")[:200000]
 
     # We put the text into a SystemMessage for better instruction following.
     system_prompt = f"""

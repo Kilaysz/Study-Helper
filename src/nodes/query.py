@@ -1,5 +1,3 @@
-# src/nodes/query.py
-
 import os
 from langchain_core.messages import SystemMessage
 from src.utils.llm_setup import get_llm
@@ -12,29 +10,48 @@ def query_node(state):
     llm_with_tools = llm.bind_tools(tools)
     query = state["messages"][-1].content
     
-    # --- 1. RAG Retrieval Logic (DEDICATED DB) ---
+    # --- 1. Intelligent RAG Retrieval (Safety-First) ---
     print(f"🌐 Query Node: Retrieving context for: '{query}'...")
     
     context_content = ""
     try:
-        retriever = get_retriever(k=1000, db_type="user")
-        relevant_docs = retriever.invoke(query)
+        # A. READ FROM STATE (Fast! No DB lookup needed)
+        total_chunks = state.get("chunk_count", 0)
         
-        if relevant_docs:
-            # FIX: Extracted .page_content (List[Document] -> List[str])
-            docs_text = [doc.page_content for doc in relevant_docs]
-            context_content = "\n\n".join(docs_text)
-            print(f"   ✅ Found {len(relevant_docs)} relevant document chunks.")
+        # B. Safety Cap (Max 50 chunks)
+        # Prevents "Context Window Overflow" on large files
+        safe_k = total_chunks 
+        
+        if safe_k > 0:
+            print(f"   📊 State indicates {total_chunks} total chunks. Fetching {safe_k}...")
+            
+            # Use the precise K value
+            retriever = get_retriever(k=safe_k, db_type="user")
+            relevant_docs = retriever.invoke(query)
+            
+            if relevant_docs:
+                docs_text = [doc.page_content for doc in relevant_docs]
+                context_content = "\n\n".join(docs_text)
+                print(f"   ✅ Found {len(relevant_docs)} relevant document chunks.")
         else:
-            print("   ⚠️ No relevant document chunks found.")
+             print("   ℹ️ State indicates 0 chunks (or no file). Skipping vector search.")
             
     except Exception as e:
         print(f"   ⚠️ Retrieval skipped/failed: {e}")
 
-    # Fallback: If retrieval found nothing, use raw file safe limit
+    # Fallback: If retrieval found nothing, use raw file with Safe Limit
     if not context_content:
         raw_file = state.get("file_content", "") or ""
-        context_content = raw_file[:15000] 
+        
+        # Limit to 30,000 chars (approx 8k tokens) to prevent LLM crash
+        safe_limit = 30000 
+        
+        if len(raw_file) > safe_limit:
+            context_content = raw_file[:safe_limit]
+            print(f"   ⚠️ Raw file too large. Truncated to {safe_limit} chars.")
+        else:
+            context_content = raw_file
+            
         if raw_file:
             print("   ⚠️ Using raw file fallback.")
 

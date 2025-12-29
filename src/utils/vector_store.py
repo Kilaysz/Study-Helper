@@ -59,9 +59,25 @@ def get_vector_store(db_type: str):
     _active_dbs[db_type] = instance
     return instance
 
-# ==========================================
-# 1. USER DB MANAGEMENT (Ephemeral)
-# ==========================================
+
+def get_total_chunk_count(filename: str, db_type: str = "user") -> int:
+    """
+    Returns the exact number of chunks associated with a specific file.
+    """
+    try:
+        db = get_vector_store(db_type)
+        # ChromaDB allows filtering by metadata 'where' clause
+        # We assume you stored the filename in metadata={"source": filename}
+        data = db.get(where={"source": filename})
+        
+        count = len(data['ids'])
+        print(f"📊 Found {count} chunks for file: {filename}")
+        return count
+    except Exception as e:
+        print(f"⚠️ Error counting chunks: {e}")
+        return 5 # Fallback default
+
+
 
 def clear_database():
     """
@@ -88,27 +104,36 @@ def clear_database():
         print(f"❌ Error clearing database: {e}")
         return False
 
-def index_document(text: str, filename: str):
+def index_document(text: str, filename: str) -> int:
     """
     1. Wipes old User DB content (Safely).
     2. Indexes new file content.
+    3. Returns the number of chunks created.
     """
     # Step 1: Clear old data safely
     clear_database()
 
-    # Step 2: Prepare new chunks
-    print(f"📊 Indexing new file: {filename}")
+    # Step 2: Normalize filename (Strip path "uploads/")
+    clean_name = os.path.basename(filename)
+    print(f"📊 Indexing new file: {clean_name}")
+
+    # Step 3: Create Chunks
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=1000, chunk_overlap=100, add_start_index=True
     )
+    # Note: We use clean_name in metadata so get_total_chunk_count finds it later!
     chunks = splitter.create_documents(
-        [text], metadatas=[{"source": filename}]
+        [text], metadatas=[{"source": clean_name}]
     )
 
-    # Step 3: Add to DB (using Singleton)
+    # Step 4: Add to DB
     db = get_vector_store("user")
     db.add_documents(chunks)
-    print("✅ User document indexed successfully.")
+    
+    count = len(chunks)
+    print(f"✅ User document indexed successfully. Total Chunks: {count}")
+    
+    return count
 
 # ==========================================
 # 2. FACULTY DB MANAGEMENT (Permanent)

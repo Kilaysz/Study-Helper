@@ -18,7 +18,7 @@ def advisor_node(state):
     context_text = ""
     try:
         # Retrieve from FACULTY database
-        retriever = get_retriever(k=10, db_type="faculty")
+        retriever = get_retriever(k=1000, db_type="faculty")
         relevant_docs = retriever.invoke(user_project_idea)
         
         # Filter for faculty_db documents
