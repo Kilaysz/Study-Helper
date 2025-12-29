@@ -6,7 +6,7 @@ def quiz_node(state):
     llm = get_llm()
     
     # 1. Get raw content (Limit to 50k chars to fit context)
-    context_text = state.get("file_content", "")[:50000]
+    context_text = state.get("file_content", "")
     
     prompt = f"""
     You are a Professor creating a quiz based on the provided text.
