@@ -168,16 +168,24 @@ def index_professors_to_chroma():
         name = prof.get("name", "Unknown")
         lab = prof.get("lab", "N/A")
         areas = prof.get("areas", "N/A")
+        # 👇 Capture the new field
+        profile_url = prof.get("profile_url", "N/A") 
         raw_info = prof.get("raw_info", "")
 
         if not raw_info.strip(): continue
 
         chunks = splitter.split_text(raw_info)
         for chunk in chunks:
-            content = f"Professor: {name}\nLab: {lab}\nAreas: {areas}\n\n{chunk}"
+            content = f"Professor: {name}\nLab: {lab}\n...\n{chunk}"
+            
             docs.append(Document(
                 page_content=content,
-                metadata={"source": "faculty_db", "name": name}
+                # 👇 Save it in metadata
+                metadata={
+                    "source": "faculty_db", 
+                    "name": name, 
+                    "profile_url": profile_url 
+                }
             ))
 
     if docs:
