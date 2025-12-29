@@ -79,6 +79,7 @@ def query_node(state):
     3. **Generate Report:** - Give a Final Score (e.g., 3/5).
        - Create a Corrections Table/List explaining ONLY the wrong answers.
        - Do not simply say "You are wrong". Explain WHY based on the key.
+       - check the context_content to verify the answer
 
     #### IF (B) User is Asking Questions (TUTOR MODE):
     1. **Check Internal Context:** Does the 'Relevant Document Excerpts' section answer the question?
