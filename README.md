@@ -90,6 +90,31 @@ To balance **User Privacy** with **System Knowledge**, the application maintains
 - Python **3.10+**
 - Node.js & npm
 - **Ollama** running locally
+### How to download: 
+#### 🐍 Install Python (3.10+)
+1.  Download the installer from [python.org](https://www.python.org/downloads/).
+2.  **Important:** During installation, check the box **"Add Python to PATH"**.
+3.  Verify installation:
+    ```bash
+    python --version
+    # Should be 3.10 or higher
+    ```
+
+#### 📦 Install Node.js & npm
+*Required only to build the frontend. You can uninstall it afterwards if you want.*
+1.  Download the "LTS" version from [nodejs.org](https://nodejs.org/).
+2.  Run the installer (default settings are fine).
+3.  Verify installation:
+    ```bash
+    node -v
+    npm -v
+    ```
+
+#### 🦙 Install Ollama
+1.  Download from [ollama.com](https://ollama.com/).
+2.  Install and run the application.
+
+---
 
 ```bash
 ollama serve
@@ -125,7 +150,7 @@ WOLFRAM_ALPHA_APPID="your_wolfram_alpha_app_id"
 ## 3. Start Server
 
 ```bash
-./run.ps1
+uv run python server.py
 ```
 
 ### ⚠️ On first run, the server will automatically scrape the NCKU CSIE faculty website and build the professor vector database.
