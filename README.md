@@ -2,7 +2,7 @@
 
 **An intelligent, multi-agent AI companion for studying, research, and academic advisor discovery.**
 
-This project is a **Full-Stack Agentic AI System** built with **LangGraph**, **FastAPI**, and **Ollama (Local LLMs)**.
+This project is a Full-Stack Agentic AI System built with LangGraph, FastAPI, and Ollama (Local or Remote LLMs).
 
 Unlike standard RAG pipelines that treat every request the same, this system uses a **specialized multi-agent architecture**. It intelligently routes tasks—using **Vector Search** for specific questions but **Raw Document Processing** for comprehensive summaries and quizzes—ensuring higher quality outputs than standard chatbots.
 
@@ -89,7 +89,7 @@ To balance **User Privacy** with **System Knowledge**, the application maintains
 ### Prerequisites
 - Python **3.10+**
 - Node.js & npm
-- **Ollama** running locally
+- **Ollama** running locally or remotely
 ### How to download: 
 #### 🐍 Install Python (3.10+)
 1.  Download the installer from [python.org](https://www.python.org/downloads/).
@@ -113,6 +113,8 @@ To balance **User Privacy** with **System Knowledge**, the application maintains
 #### 🦙 Install Ollama
 1.  Download from [ollama.com](https://ollama.com/).
 2.  Install and run the application.
+
+⚠️ Note for Remote Users: If running Ollama on a different machine (e.g., a server), you must configure it to listen on all interfaces so the Study Helper can connect to it. Set the environment variable OLLAMA_HOST=0.0.0.0 on the server before starting Ollama.
 
 ---
 
@@ -142,8 +144,19 @@ Create a .env file in the project root:
 ```bash
 SERPAPI_API_KEY=your_serpapi_key_here
 TAVILY_API_KEY=your_tavily_key_here
+# Option 1: Local (Default)
 OLLAMA_LOCAL_URL=http://localhost:11434
-OLLAMA_API_KEY="your_OLLAMA_key_here"
+
+# Option 2: Remote Server or API Endpoint
+# You can use an IP address, a domain name, or a tunneled URL.
+# Examples: 
+#   - http://192.168.1.50:11434
+#   - https://my-ollama-server.com
+#   - https://cool-api.ngrok-free.app
+OLLAMA_LOCAL_URL=YOUR_API_ENDPOINT_HERE
+
+# If your endpoint requires an API Key (e.g. via Nginx or Cloudflare):
+OLLAMA_API_KEY="your_optional_api_key"
 WOLFRAM_ALPHA_APPID="your_wolfram_alpha_app_id"
 ```
 
