@@ -2,9 +2,11 @@
 
 **An intelligent, multi-agent AI companion for studying, research, and academic advisor discovery.**
 
-This project is a Full-Stack Agentic AI System built with LangGraph, FastAPI, and Ollama (Local or Remote LLMs).
+This project is a **Full-Stack Agentic AI System** built with **LangGraph**, **FastAPI**, and **Ollama**.
 
-Unlike standard RAG pipelines that treat every request the same, this system uses a **specialized multi-agent architecture**. It intelligently routes tasks—using **Vector Search** for specific questions but **Raw Document Processing** for comprehensive summaries and quizzes—ensuring higher quality outputs than standard chatbots.
+It features a **Hybrid AI Architecture**:
+* **Inference (Chat):** Powered by remote high-performance LLMs (e.g., `gpt-oss:20b`).
+* **Embeddings (Search):** powered by a local Ollama instance for low-latency vector processing.
 
 ---
 
@@ -47,8 +49,6 @@ Unlike standard RAG pipelines that treat every request the same, this system use
 
 The system utilizes a **Router-Based Workflow**. A central **Intent Classifier** analyzes the user's prompt and directs it to the most suitable specialized agent.
 
-
-
 | Agent Node | Technology | Best For... |
 | :--- | :--- | :--- |
 | **Advisor Agent** | **RAG (Faculty DB)** + **NCKU Search** | Finding supervisors & drafting emails. |
@@ -71,7 +71,8 @@ To balance **User Privacy** with **System Knowledge**, the application maintains
 ## 🛠️ Tech Stack
 
 - **Backend:** Python, FastAPI, LangChain, LangGraph
-- **LLMs & Embeddings:** Ollama (Llama 3 / Mistral), `nomic-embed-text`
+- **LLMs:** Remote API (e.g., NCKU API Gateway)
+- **Embeddings:** Local Ollama (`nomic-embed-text`)
 - **Frontend:** React, Tailwind CSS, Lucide Icons
 - **Vector Database:** ChromaDB (Local file-based storage)
 - **External Tools:**
@@ -89,7 +90,8 @@ To balance **User Privacy** with **System Knowledge**, the application maintains
 ### Prerequisites
 - Python **3.10+**
 - Node.js & npm
-- **Ollama** running locally or remotely
+- **Ollama** running locally (for embeddings)
+
 ### How to download: 
 #### 🐍 Install Python (3.10+)
 1.  Download the installer from [python.org](https://www.python.org/downloads/).
@@ -110,18 +112,14 @@ To balance **User Privacy** with **System Knowledge**, the application maintains
     npm -v
     ```
 
-#### 🦙 Install Ollama
+#### 🦙 Install Local Ollama (For Embeddings)
 1.  Download from [ollama.com](https://ollama.com/).
 2.  Install and run the application.
-
-⚠️ Note for Remote Users: If running Ollama on a different machine (e.g., a server), you must configure it to listen on all interfaces so the Study Helper can connect to it. Set the environment variable OLLAMA_HOST=0.0.0.0 on the server before starting Ollama.
-
----
+3.  Pull the embedding model:
 
 ```bash
 ollama serve
 ollama pull nomic-embed-text
-ollama pull llama3
 ```
 
 ## 🔧 Backend Setup
@@ -142,22 +140,26 @@ source .venv/bin/activate   # Windows: .venv\Scripts\activate
 Create a .env file in the project root:
 
 ```bash
-SERPAPI_API_KEY=your_serpapi_key_here
-TAVILY_API_KEY=your_tavily_key_here
-# Option 1: Local (Default)
-OLLAMA_LOCAL_URL=http://localhost:11434
+# ------------------------------
+# API KEYS (Search & Math)
+# ------------------------------
+SERPAPI_API_KEY="your_serpapi_key"
+TAVILY_API_KEY="your_tavily_key"
+WOLFRAM_ALPHA_APPID="your_wolfram_id"
 
-# Option 2: Remote Server or API Endpoint
-# You can use an IP address, a domain name, or a tunneled URL.
-# Examples: 
-#   - http://192.168.1.50:11434
-#   - https://my-ollama-server.com
-#   - https://cool-api.ngrok-free.app
-OLLAMA_LOCAL_URL=YOUR_API_ENDPOINT_HERE
+# ------------------------------
+# LLM CONFIGURATION (Remote)
+# ------------------------------
+# The URL for the main Chat Model
+OLLAMA_BASE_URL="[https://api-gateway.netdb.csie.ncku.edu.tw](https://api-gateway.netdb.csie.ncku.edu.tw)"
+OLLAMA_MODEL="gpt-oss:20b"
+OLLAMA_API_KEY="your_ollama_api_key"
 
-# If your endpoint requires an API Key (e.g. via Nginx or Cloudflare):
-OLLAMA_API_KEY="your_optional_api_key"
-WOLFRAM_ALPHA_APPID="your_wolfram_alpha_app_id"
+# ------------------------------
+# EMBEDDING CONFIGURATION (Local)
+# ------------------------------
+# Local instance used specifically for Vector Embeddings (RAG)
+OLLAMA_LOCAL_URL="http://localhost:11434"
 ```
 
 ## 3. Start Server
